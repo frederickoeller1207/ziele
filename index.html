@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mäusegruppe – Ziele</title>
+<link href="https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#f8fafc;--card:#fff;--txt:#111827;--muted:#6b7280;--pri:#007aff;--border:#e5e7eb;--radius:14px;--shadow:0 6px 18px rgba(0,0,0,.06)}
+  body{font-family:'SF Pro Display',sans-serif;background:var(--bg);color:var(--txt);margin:0;padding:16px}
+  h1{font-size:22px;margin:0 0 12px;text-align:center;color:var(--pri)}
+  .wrap{max-width:900px;margin:0 auto}
+  .grid{display:grid;grid-template-columns:1fr;gap:12px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px}
+  .search{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:10px}
+  .kid{padding:12px;border:1px solid var(--border);border-radius:12px;display:flex;justify-content:space-between;align-items:center;cursor:pointer}
+  .kid:hover{background:#f3f4f6}
+  .muted{color:var(--muted);font-size:12px}
+  .toolbar{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+  .btn{padding:10px 14px;border:none;border-radius:10px;background:var(--pri);color:#fff;font-weight:600;cursor:pointer}
+  .btn.ghost{background:#fff;color:var(--txt);border:1px solid var(--border)}
+  .title{font-size:18px;margin:0}
+  .goalTag{font-size:12px;color:#2563eb;background:#e0ecff;border:1px solid #cfe0ff;padding:2px 8px;border-radius:999px}
+  .progressWrap{width:100%;height:14px;background:#eef2ff;border:1px solid var(--border);border-radius:999px;overflow:hidden}
+  .progressBar{height:100%;width:0%;background:linear-gradient(90deg,#22c55e,#60a5fa);transition:width .6s ease}
+  .listPills{display:flex;flex-wrap:wrap;gap:6px}
+  .pill{padding:6px 10px;border:1px solid var(--border);border-radius:999px;background:#fafafa;font-size:12px}
+</style>
+</head>
+<body>
+  <h1>Mäusegruppe – Ziele</h1>
+  <div class="wrap">
+    <!-- Liste -->
+    <div id="listView" class="card">
+      <input id="search" class="search" placeholder="Kind suchen…" />
+      <div id="kidList" class="grid" style="margin-top:10px"></div>
+    </div>
+
+    <!-- Detail -->
+    <div id="detailView" class="card" style="display:none">
+      <div class="toolbar">
+        <button id="backBtn" class="btn ghost">Zurück</button>
+        <div id="kidName" class="title"></div>
+        <div style="flex:1"></div>
+        <div id="saldo" class="muted"></div>
+      </div>
+
+      <div class="muted" id="goalIndexTag"></div>
+      <h2 id="goalTitle" style="margin:6px 0 10px 0;font-size:20px"></h2>
+
+      <div class="progressWrap">
+        <div id="bar" class="progressBar"></div>
+      </div>
+      <div id="percent" class="muted" style="margin-top:6px"></div>
+
+      <div class="grid" style="margin-top:12px">
+        <div class="card" style="padding:10px">
+          <div class="muted">Vorherige Ziele</div>
+          <div id="prevGoals" class="listPills" style="margin-top:6px"></div>
+        </div>
+        <div class="card" style="padding:10px">
+          <div class="muted">Zukünftige Ziele</div>
+          <div id="nextGoals" class="listPills" style="margin-top:6px"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
+import { getDatabase, ref, get, onValue } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-database.js";
+
+/* Firebase: punkte-45c20 */
+const app = initializeApp({
+  apiKey: "AIzaSyAdPN2duh89Fx5rmYlFshdf0juhYNX_7fg",
+  authDomain: "punkte-45c20.firebaseapp.com",
+  databaseURL: "https://punkte-45c20-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "punkte-45c20",
+  storageBucket: "punkte-45c20.appspot.com",
+  messagingSenderId: "931713539549",
+  appId: "1:931713539549:web:e348bf38369639f1906a34"
+});
+const db = getDatabase(app);
+
+/* DOM */
+const listView = document.getElementById('listView');
+const detailView = document.getElementById('detailView');
+const kidList = document.getElementById('kidList');
+const search = document.getElementById('search');
+const backBtn = document.getElementById('backBtn');
+const kidNameEl = document.getElementById('kidName');
+const saldoEl = document.getElementById('saldo');
+const goalIndexTag = document.getElementById('goalIndexTag');
+const goalTitle = document.getElementById('goalTitle');
+const bar = document.getElementById('bar');
+const percentEl = document.getElementById('percent');
+const prevGoals = document.getElementById('prevGoals');
+const nextGoals = document.getElementById('nextGoals');
+
+/* State */
+let GOALS = [];
+let KIDS = []; // nur mit farbe
+
+/* Ziele laden */
+async function loadGoals(){
+  const s = await get(ref(db,"ziele/meta"));
+  if (s.exists() && Array.isArray(s.val())) GOALS = s.val();
+  else {
+    GOALS = [
+      "Ich bin freundlich zu anderen.",
+      "Ich rede in angemessener Lautstärke.",
+      "Ich höre anderen zu und lasse sie ausreden.",
+      "Ich respektiere die Grenzen anderer Kinder.",
+      "Ich streite ohne Schubsen, Schlagen oder Beleidigen.",
+      "Ich teile Dinge (Materialien, Essen).",
+      "Ich helfe anderen, wenn sie Unterstützung brauchen.",
+      "Ich erinnere andere freundlich an Regeln.",
+      "Ich bleibe an meinem Platz sitzen.",
+      "Ich spiele nicht mit dem Essen.",
+      "Ich räume meine Sachen weg.",
+      "Ich gehe langsam durch den Flur, ohne zu drängeln.",
+      "Ich hole mir Hilfe, wenn ich alleine nicht weiterkomme.",
+      "Ich plane meine Zeit eigenständig (Hausaufgaben, Spielen, Essen).",
+      "Ich halte Regeln auch ohne Erinnerung ein.",
+      "Ich bin ein Vorbild für andere Kinder."
+    ];
+  }
+}
+
+/* Kinder laden (nur mit farbe) live */
+onValue(ref(db,"kinder"), async (snap)=>{
+  await loadGoals();
+  KIDS.length = 0;
+  snap.forEach(ch=>{
+    const v = ch.val()||{};
+    if (v.farbe === undefined) return; // Filter
+    KIDS.push({
+      name: ch.key,
+      punkte: v.punkte||0,
+      farbe: v.farbe,
+      activeGoalIndex: clampIndex(v.activeGoalIndex ?? 0),
+      progress: v.progress ?? 0
+    });
+  });
+  KIDS.sort((a,b)=>a.name.localeCompare(b.name,'de'));
+  renderList();
+});
+
+/* Suche */
+search.addEventListener('input', renderList);
+
+function renderList(){
+  const q = (search.value||"").toLowerCase();
+  kidList.innerHTML = "";
+  KIDS.filter(k=>k.name.toLowerCase().includes(q)).forEach(k=>{
+    const row = document.createElement('div');
+    row.className = 'kid';
+    row.innerHTML = `
+      <div>
+        <div style="font-weight:600">${escapeHTML(k.name)}</div>
+        <div class="muted">Ziel: #${k.activeGoalIndex+1}</div>
+      </div>
+      <div class="muted">${k.progress}%</div>
+    `;
+    row.onclick = ()=>openDetail(k.name);
+    kidList.appendChild(row);
+  });
+}
+
+async function openDetail(name){
+  // frische Daten für das Kind holen
+  const s = await get(ref(db,`kinder/${name}`));
+  if (!s.exists()){ return; }
+  const v = s.val()||{};
+  if (v.farbe === undefined){ return; } // kein Zielkonto
+
+  listView.style.display = "none";
+  detailView.style.display = "block";
+
+  const idx = clampIndex(v.activeGoalIndex ?? 0);
+  const prog = clamp01(v.progress ?? 0);
+
+  kidNameEl.textContent = name;
+  saldoEl.textContent = `Kontostand: ${v.punkte||0} Mausdollar`;
+  goalIndexTag.textContent = `Ziel #${idx+1}`;
+  goalTitle.textContent = GOALS[idx] || "—";
+
+  // Progress-Bar mit sanfter Breiten-Transition
+  bar.style.width = "0%"; // reset, dann animate
+  requestAnimationFrame(()=>{ bar.style.width = prog + "%"; });
+  percentEl.textContent = `Fortschritt: ${prog}%`;
+
+  // Vorherige/Zukünftige Listen
+  prevGoals.innerHTML = "";
+  nextGoals.innerHTML = "";
+  GOALS.slice(0, idx).forEach((t,i)=>{
+    const span = document.createElement('span'); span.className="pill"; span.textContent = `#${i+1} ${t}`; prevGoals.appendChild(span);
+  });
+  GOALS.slice(idx+1).forEach((t,i)=>{
+    const span = document.createElement('span'); span.className="pill"; span.textContent = `#${idx+2+i} ${t}`; nextGoals.appendChild(span);
+  });
+}
+
+backBtn.onclick = ()=>{
+  detailView.style.display = "none";
+  listView.style.display = "block";
+};
+
+function clamp01(x){ return Math.max(0, Math.min(100, x|0)); }
+function clampIndex(i){ return Math.max(0, Math.min((GOALS.length?GOALS.length:1)-1, i|0)); }
+function escapeHTML(s){ return (s??"").toString().replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])) }
+</script>
+</body>
+</html>
