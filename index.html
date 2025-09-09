@@ -3,66 +3,72 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Mäusegruppe – Ziele</title>
+<title>Mäusegruppe Ziele</title>
 <link href="https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@400;600&display=swap" rel="stylesheet">
 <style>
-  :root{--bg:#f8fafc;--card:#fff;--txt:#111827;--muted:#6b7280;--pri:#007aff;--border:#e5e7eb;--radius:14px;--shadow:0 6px 18px rgba(0,0,0,.06)}
-  body{font-family:'SF Pro Display',sans-serif;background:var(--bg);color:var(--txt);margin:0;padding:16px}
-  h1{font-size:22px;margin:0 0 12px;text-align:center;color:var(--pri)}
-  .wrap{max-width:900px;margin:0 auto}
-  .grid{display:grid;grid-template-columns:1fr;gap:12px}
-  .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px}
-  .search{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:10px}
-  .kid{padding:12px;border:1px solid var(--border);border-radius:12px;display:flex;justify-content:space-between;align-items:center;cursor:pointer}
-  .kid:hover{background:#f3f4f6}
-  .muted{color:var(--muted);font-size:12px}
+  :root{
+    --bg:#f9f9fb; --card:#ffffff; --txt:#1c1c1e; --muted:#6b7280;
+    --border:#e5e5ea; --accent:#007aff; --radius:12px; --shadow:0 2px 5px rgba(0,0,0,0.05);
+  }
+  body{font-family:'SF Pro Display',sans-serif;background:var(--bg);color:var(--txt);margin:0;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px}
+  h1{margin:0 0 20px;font-size:26px;font-weight:600;text-align:center}
+  .card{background:var(--card);border:1px solid #ccc;border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;width:95%;max-width:700px}
+  .search{width:100%;max-width:340px;font-size:16px;padding:12px;margin:0 auto 12px;border:1px solid #ccc;border-radius:10px;display:block}
+  .grid{display:flex;flex-direction:column;align-items:center;gap:12px}
+  .kidBtn, .btn{background:#fff;border:1px solid #ccc;border-radius:12px;padding:18px 24px;font-size:20px;font-weight:600;color:#000;box-shadow:var(--shadow);cursor:pointer;width:95%;max-width:340px;text-align:center;transition:all .2s ease, transform .1s ease}
+  .kidBtn:hover,.btn:hover{background:#f0f0f5}
+  .kidBtn:active,.btn:active{background:#e0e0e5;transform:scale(0.97)}
   .toolbar{display:flex;align-items:center;gap:8px;margin-bottom:10px}
-  .btn{padding:10px 14px;border:none;border-radius:10px;background:var(--pri);color:#fff;font-weight:600;cursor:pointer}
-  .btn.ghost{background:#fff;color:var(--txt);border:1px solid var(--border)}
-  .title{font-size:18px;margin:0}
-  .goalTag{font-size:12px;color:#2563eb;background:#e0ecff;border:1px solid #cfe0ff;padding:2px 8px;border-radius:999px}
-  .progressWrap{width:100%;height:14px;background:#eef2ff;border:1px solid var(--border);border-radius:999px;overflow:hidden}
+  .back{background:#ffffff;border:1px solid #ccc;border-radius:12px;padding:10px 14px;font-weight:600;cursor:pointer}
+  .title{font-size:20px;font-weight:600;margin-left:8px}
+  .goalTag{font-size:12px;color:#007aff;background:#eef5ff;border:1px solid #d8e6ff;padding:3px 8px;border-radius:999px}
+  .muted{color:var(--muted);font-size:12px}
+  .progressWrap{width:100%;height:16px;background:#eef2ff;border:1px solid var(--border);border-radius:999px;overflow:hidden;margin-top:8px}
   .progressBar{height:100%;width:0%;background:linear-gradient(90deg,#22c55e,#60a5fa);transition:width .6s ease}
-  .listPills{display:flex;flex-wrap:wrap;gap:6px}
+  .toggles{display:flex;gap:8px;justify-content:flex-start;margin-top:12px}
+  .mini{padding:8px 10px;font-size:13px;border-radius:10px}
+  .pillList{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
   .pill{padding:6px 10px;border:1px solid var(--border);border-radius:999px;background:#fafafa;font-size:12px}
+  .hidden{display:none}
 </style>
 </head>
 <body>
-  <h1>Mäusegruppe – Ziele</h1>
-  <div class="wrap">
-    <!-- Liste -->
-    <div id="listView" class="card">
-      <input id="search" class="search" placeholder="Kind suchen…" />
-      <div id="kidList" class="grid" style="margin-top:10px"></div>
+  <h1 id="title">Mäusegruppe Ziele</h1>
+
+  <!-- LISTE -->
+  <div id="listView" class="card">
+    <input id="search" class="search" placeholder="Suche nach Namen…" />
+    <div id="kidList" class="grid"></div>
+  </div>
+
+  <!-- DETAIL -->
+  <div id="detailView" class="card hidden">
+    <div class="toolbar">
+      <button id="backBtn" class="back">🏠 Zurück</button>
+      <div class="title" id="kidName"></div>
+      <div style="flex:1"></div>
+      <span class="goalTag" id="goalIndexTag"></span>
     </div>
 
-    <!-- Detail -->
-    <div id="detailView" class="card" style="display:none">
-      <div class="toolbar">
-        <button id="backBtn" class="btn ghost">Zurück</button>
-        <div id="kidName" class="title"></div>
-        <div style="flex:1"></div>
-        <div id="saldo" class="muted"></div>
-      </div>
+    <div class="muted" id="goalHint">Aktuelles Ziel</div>
+    <div id="goalTitle" style="font-size:18px;font-weight:600;margin-top:4px"></div>
 
-      <div class="muted" id="goalIndexTag"></div>
-      <h2 id="goalTitle" style="margin:6px 0 10px 0;font-size:20px"></h2>
+    <div class="progressWrap"><div id="bar" class="progressBar"></div></div>
+    <div id="percent" class="muted" style="margin-top:6px"></div>
 
-      <div class="progressWrap">
-        <div id="bar" class="progressBar"></div>
-      </div>
-      <div id="percent" class="muted" style="margin-top:6px"></div>
+    <div class="toggles">
+      <button id="btnPrev" class="btn mini">Vorherige Ziele</button>
+      <button id="btnNext" class="btn mini">Zukünftige Ziele</button>
+    </div>
 
-      <div class="grid" style="margin-top:12px">
-        <div class="card" style="padding:10px">
-          <div class="muted">Vorherige Ziele</div>
-          <div id="prevGoals" class="listPills" style="margin-top:6px"></div>
-        </div>
-        <div class="card" style="padding:10px">
-          <div class="muted">Zukünftige Ziele</div>
-          <div id="nextGoals" class="listPills" style="margin-top:6px"></div>
-        </div>
-      </div>
+    <div id="prevWrap" class="hidden">
+      <div class="muted" style="margin-top:10px">Vorherige Ziele</div>
+      <div id="prevGoals" class="pillList"></div>
+    </div>
+
+    <div id="nextWrap" class="hidden">
+      <div class="muted" style="margin-top:10px">Zukünftige Ziele</div>
+      <div id="nextGoals" class="pillList"></div>
     </div>
   </div>
 
@@ -89,13 +95,16 @@ const kidList = document.getElementById('kidList');
 const search = document.getElementById('search');
 const backBtn = document.getElementById('backBtn');
 const kidNameEl = document.getElementById('kidName');
-const saldoEl = document.getElementById('saldo');
 const goalIndexTag = document.getElementById('goalIndexTag');
 const goalTitle = document.getElementById('goalTitle');
 const bar = document.getElementById('bar');
 const percentEl = document.getElementById('percent');
 const prevGoals = document.getElementById('prevGoals');
 const nextGoals = document.getElementById('nextGoals');
+const prevWrap = document.getElementById('prevWrap');
+const nextWrap = document.getElementById('nextWrap');
+const btnPrev = document.getElementById('btnPrev');
+const btnNext = document.getElementById('btnNext');
 
 /* State */
 let GOALS = [];
@@ -127,70 +136,59 @@ async function loadGoals(){
   }
 }
 
-/* Kinder laden (nur mit farbe) live */
+/* Kinder live laden (nur mit farbe) */
 onValue(ref(db,"kinder"), async (snap)=>{
   await loadGoals();
   KIDS.length = 0;
   snap.forEach(ch=>{
     const v = ch.val()||{};
-    if (v.farbe === undefined) return; // Filter
+    if (v.farbe === undefined) return; // nur Ziel-Konten
     KIDS.push({
       name: ch.key,
-      punkte: v.punkte||0,
-      farbe: v.farbe,
       activeGoalIndex: clampIndex(v.activeGoalIndex ?? 0),
-      progress: v.progress ?? 0
+      progress: clamp01(v.progress ?? 0)
     });
   });
   KIDS.sort((a,b)=>a.name.localeCompare(b.name,'de'));
   renderList();
 });
 
-/* Suche */
-search.addEventListener('input', renderList);
-
+/* Liste rendern */
 function renderList(){
   const q = (search.value||"").toLowerCase();
   kidList.innerHTML = "";
   KIDS.filter(k=>k.name.toLowerCase().includes(q)).forEach(k=>{
-    const row = document.createElement('div');
-    row.className = 'kid';
-    row.innerHTML = `
-      <div>
-        <div style="font-weight:600">${escapeHTML(k.name)}</div>
-        <div class="muted">Ziel: #${k.activeGoalIndex+1}</div>
-      </div>
-      <div class="muted">${k.progress}%</div>
-    `;
-    row.onclick = ()=>openDetail(k.name);
-    kidList.appendChild(row);
+    const btn = document.createElement('button');
+    btn.className = 'kidBtn';
+    btn.textContent = k.name;
+    btn.onclick = ()=>openDetail(k.name);
+    kidList.appendChild(btn);
   });
 }
+search.addEventListener('input', renderList);
 
+/* Detail öffnen */
 async function openDetail(name){
-  // frische Daten für das Kind holen
+  // frische Daten
   const s = await get(ref(db,`kinder/${name}`));
-  if (!s.exists()){ return; }
+  if (!s.exists()) return;
   const v = s.val()||{};
-  if (v.farbe === undefined){ return; } // kein Zielkonto
+  if (v.farbe === undefined) return;
 
-  listView.style.display = "none";
-  detailView.style.display = "block";
-
+  toggleViews(false);
   const idx = clampIndex(v.activeGoalIndex ?? 0);
   const prog = clamp01(v.progress ?? 0);
 
   kidNameEl.textContent = name;
-  saldoEl.textContent = `Kontostand: ${v.punkte||0} Mausdollar`;
-  goalIndexTag.textContent = `Ziel #${idx+1}`;
+  goalIndexTag.textContent = `Ziel ${idx+1}`;
   goalTitle.textContent = GOALS[idx] || "—";
 
-  // Progress-Bar mit sanfter Breiten-Transition
-  bar.style.width = "0%"; // reset, dann animate
+  // Progress-Bar animiert setzen
+  bar.style.width = "0%";
   requestAnimationFrame(()=>{ bar.style.width = prog + "%"; });
   percentEl.textContent = `Fortschritt: ${prog}%`;
 
-  // Vorherige/Zukünftige Listen
+  // Listen vorbereiten, aber versteckt bis Button
   prevGoals.innerHTML = "";
   nextGoals.innerHTML = "";
   GOALS.slice(0, idx).forEach((t,i)=>{
@@ -199,16 +197,25 @@ async function openDetail(name){
   GOALS.slice(idx+1).forEach((t,i)=>{
     const span = document.createElement('span'); span.className="pill"; span.textContent = `#${idx+2+i} ${t}`; nextGoals.appendChild(span);
   });
+  prevWrap.classList.add('hidden');
+  nextWrap.classList.add('hidden');
 }
 
-backBtn.onclick = ()=>{
-  detailView.style.display = "none";
-  listView.style.display = "block";
-};
+/* Buttons für Listen */
+btnPrev.onclick = ()=>{ prevWrap.classList.toggle('hidden'); };
+btnNext.onclick = ()=>{ nextWrap.classList.toggle('hidden'); };
 
+/* Navigation */
+backBtn.onclick = ()=>toggleViews(true);
+function toggleViews(showList){
+  document.getElementById('title').textContent = showList ? "Mäusegruppe Ziele" : "Mäusegruppe Ziele";
+  listView.classList.toggle('hidden', !showList);
+  detailView.classList.toggle('hidden', showList);
+}
+
+/* Utils */
 function clamp01(x){ return Math.max(0, Math.min(100, x|0)); }
 function clampIndex(i){ return Math.max(0, Math.min((GOALS.length?GOALS.length:1)-1, i|0)); }
-function escapeHTML(s){ return (s??"").toString().replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])) }
 </script>
 </body>
 </html>
