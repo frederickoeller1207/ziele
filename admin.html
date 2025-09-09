@@ -12,40 +12,42 @@
   .grid{display:grid;grid-template-columns:320px 1fr;gap:16px;align-items:start}
   .card{background:var(--card);border:1px solid var(--border);border-radius:var(--rad);box-shadow:var(--shadow);padding:14px}
   .section-title{font-weight:600;margin:0 0 10px}
+  .muted{color:var(--muted);font-size:12px}
   .search{width:100%;padding:10px;border:1px solid var(--border);border-radius:10px}
   .list{display:flex;flex-direction:column;gap:8px;margin-top:10px;max-height:70vh;overflow:auto}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
   .kid{display:flex;justify-content:space-between;align-items:center;padding:10px;border:1px solid var(--border);border-radius:10px;cursor:pointer;background:#fff}
   .kid:hover{background:#f9fafb}
-  .muted{color:var(--muted);font-size:12px}
-  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
   .btn{background:#fff;border:1px solid var(--border);border-radius:10px;padding:8px 12px;cursor:pointer;font-weight:600}
   .btn:hover{background:#f3f4f6}
   .btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
   .btn.danger{background:#ef4444;color:#fff;border-color:#ef4444}
+  .pill{padding:6px 10px;border:1px solid var(--border);border-radius:999px;background:#fafafa;font-size:12px}
+  .input{padding:8px;border:1px solid var(--border);border-radius:10px;width:100%}
+  .select{padding:8px;border:1px solid var(--border);border-radius:10px;background:#fff;width:100%}
   .progressWrap{width:100%;height:16px;background:#eef2ff;border:1px solid var(--border);border-radius:999px;overflow:hidden}
   .progressBar{height:100%;width:0;background:linear-gradient(90deg,#22c55e,#60a5fa);transition:width .4s ease}
-  .pill{padding:6px 10px;border:1px solid var(--border);border-radius:999px;background:#fafafa;font-size:12px}
-  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-  .input{padding:8px;border:1px solid var(--border);border-radius:10px;width:100%}
-  .goal-item{display:flex;gap:8px;align-items:center;margin-bottom:8px}
-  .goal-item input{flex:1}
   .divider{height:1px;background:var(--border);margin:12px 0}
   .callout{background:#fff7ed;border:1px solid #fed7aa;padding:10px;border-radius:10px}
-  .select{padding:8px;border:1px solid var(--border);border-radius:10px;background:#fff}
+  .goal-item{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+  .goal-item input{flex:1}
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .table{width:100%;border-collapse:collapse}
+  .table th,.table td{border-bottom:1px solid var(--border);padding:6px 4px;text-align:left;font-size:14px}
 </style>
 </head>
 <body>
 <h1>Ziele – Admin</h1>
 
 <div class="grid">
-  <!-- Linke Spalte: Kinder -->
+  <!-- Kinder -->
   <div class="card">
     <div class="section-title">Kinder (nur mit Farbe)</div>
     <input id="search" class="search" placeholder="Suche nach Namen…">
     <div id="kidList" class="list"></div>
   </div>
 
-  <!-- Rechte Spalte: Detail + Verwaltung -->
+  <!-- Details + Verwaltung -->
   <div class="card">
     <!-- Abschlüsse warten -->
     <div class="section-title">Abschlüsse warten auf Freigabe</div>
@@ -53,47 +55,61 @@
 
     <div class="divider"></div>
 
-    <!-- Detail Kind -->
     <div class="two-col">
+      <!-- Detail Kind -->
       <div>
         <div class="section-title">Ausgewähltes Kind</div>
         <div id="kidName" class="pill">—</div>
-        <div class="muted" style="margin-top:6px">Aktives Ziel</div>
-        <div id="goalHeader" class="row" style="margin-top:4px">
-          <span id="goalIndex" class="pill">Ziel —</span>
+
+        <div class="row" style="margin-top:8px">
+          <div class="pill" id="goalIndex">Ziel —</div>
+          <div id="goalTitle" style="font-weight:600">—</div>
         </div>
-        <div id="goalTitle" style="font-weight:600;margin-top:4px">—</div>
 
         <div class="progressWrap" style="margin-top:10px"><div id="bar" class="progressBar"></div></div>
         <div id="percent" class="muted" style="margin-top:6px">Fortschritt: —%</div>
 
         <div class="row" style="margin-top:10px">
           <button id="minus10" class="btn">−10%</button>
-          <button id="minus5" class="btn">−5%</button>
+          <button id="minus5"  class="btn">−5%</button>
           <input id="progInput" class="input" type="number" min="0" max="100" step="1" placeholder="Prozent eingeben">
-          <button id="plus5" class="btn">+5%</button>
-          <button id="plus10" class="btn">+10%</button>
+          <button id="plus5"   class="btn">+5%</button>
+          <button id="plus10"  class="btn">+10%</button>
           <button id="saveProg" class="btn primary">Speichern</button>
-        </div>
-      </div>
-
-      <div>
-        <div class="section-title">Nächstes Ziel setzen</div>
-        <div class="muted">Nur nutzen, wenn 100 % erreicht wurden.</div>
-        <select id="nextGoalSelect" class="select" style="margin-top:8px;width:100%"></select>
-        <div class="row" style="margin-top:8px">
-          <button id="giveFinal5" class="btn">Bonus +5</button>
-          <button id="advanceGoal" class="btn primary">Nächstes Ziel</button>
         </div>
 
         <div class="divider"></div>
 
+        <!-- NEU: Ziel jederzeit ändern -->
+        <div class="section-title">Aktives Ziel ändern</div>
+        <select id="setGoalSelect" class="select"></select>
+        <div class="row" style="margin-top:8px">
+          <button id="setGoalBtn" class="btn primary">Ziel setzen</button>
+        </div>
+      </div>
+
+      <!-- Ziele verwalten + Archiv -->
+      <div>
         <div class="section-title">Ziele verwalten</div>
         <div id="goalsList"></div>
         <div class="row" style="margin-top:8px">
           <input id="newGoalText" class="input" placeholder="Neues Ziel…">
           <button id="addGoal" class="btn">Hinzufügen</button>
           <button id="saveGoals" class="btn primary">Ziele speichern</button>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="row">
+          <div class="section-title" style="margin:0">Archiv</div>
+          <span class="muted">(Zielverläufe)</span>
+        </div>
+        <select id="archKidSelect" class="select" style="margin-top:6px"></select>
+        <div id="archList" class="list" style="max-height:260px;overflow:auto;margin-top:8px">
+          <table class="table">
+            <thead><tr><th>Kind</th><th>Ziel</th><th>Von</th><th>Bis</th><th>100%</th></tr></thead>
+            <tbody id="archBody"></tbody>
+          </table>
         </div>
       </div>
     </div>
@@ -102,7 +118,7 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
-import { getDatabase, ref, get, onValue, update, set, remove } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-database.js";
+import { getDatabase, ref, get, onValue, update, set, push } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-database.js";
 
 /* Firebase (punkte-45c20) */
 const app = initializeApp({
@@ -134,14 +150,16 @@ const plus10  = document.getElementById('plus10');
 const progInput = document.getElementById('progInput');
 const saveProg  = document.getElementById('saveProg');
 
-const nextGoalSelect = document.getElementById('nextGoalSelect');
-const giveFinal5 = document.getElementById('giveFinal5');
-const advanceGoal = document.getElementById('advanceGoal');
+const setGoalSelect = document.getElementById('setGoalSelect');
+const setGoalBtn = document.getElementById('setGoalBtn');
 
 const goalsList = document.getElementById('goalsList');
 const newGoalText = document.getElementById('newGoalText');
 const addGoal = document.getElementById('addGoal');
 const saveGoals = document.getElementById('saveGoals');
+
+const archKidSelect = document.getElementById('archKidSelect');
+const archBody = document.getElementById('archBody');
 
 /* State */
 let GOALS = [];
@@ -151,8 +169,11 @@ let currentKid = null;
 /* Utils */
 const clamp01 = x => Math.max(0, Math.min(100, x|0));
 const idxClamp = i => Math.max(0, Math.min((GOALS.length?GOALS.length:1)-1, i|0));
+const ts = () => new Date().toISOString();
+const fmt = s => { const d = new Date(s); return isNaN(+d) ? "—" :
+  `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; };
 
-/* Ziele laden + rendern (Verwaltung + Dropdown) */
+/* Ziele laden */
 async function loadGoals(){
   const s = await get(ref(db,"ziele/meta"));
   if (s.exists() && Array.isArray(s.val())) GOALS = s.val();
@@ -175,22 +196,23 @@ async function loadGoals(){
     "Ich bin ein Vorbild für andere Kinder."
   ];
   renderGoalsManager();
-  renderNextGoalSelect();
+  renderGoalDropdowns();
 }
 
-/* Kinder live laden (nur mit farbe) + Abschlüsse rendern */
+/* Kinder + Abschlüsse live */
 onValue(ref(db,"kinder"), async (snap)=>{
   await loadGoals();
   KIDS.length = 0;
   snap.forEach(ch=>{
     const v = ch.val()||{};
-    if (v.farbe === undefined) return; // nur OGS-Konten
+    if (v.farbe === undefined) return;
     KIDS.push({ name: ch.key, ...v });
   });
   KIDS.sort((a,b)=>a.name.localeCompare(b.name,'de'));
   renderKidList();
   renderAbschluesse();
-  if (currentKid) openKid(currentKid.name); // refresh view
+  renderArchKidSelect();
+  if (currentKid) openKid(currentKid.name);
 });
 
 /* Liste */
@@ -221,15 +243,17 @@ async function openKid(name){
   kidNameEl.textContent = name;
   goalIndexEl.textContent = `Ziel ${idx+1}`;
   goalTitleEl.textContent = GOALS[idx] || "—";
+
   bar.style.width = "0%";
   requestAnimationFrame(()=>{ bar.style.width = prog + "%"; });
   percentEl.textContent = `Fortschritt: ${prog}%`;
   progInput.value = prog;
 
-  renderNextGoalSelect(idx); // vorselektiert nächstes
+  renderGoalDropdowns(idx);
+  renderArchive(name);
 }
 
-/* Progress anwenden mit neuer Abschlusslogik */
+/* Nur neue, höhere Meilensteine belohnen */
 async function applyProgressWithRewards(name, newProgress){
   const s = await get(ref(db, `kinder/${name}`));
   if(!s.exists()) return;
@@ -237,14 +261,17 @@ async function applyProgressWithRewards(name, newProgress){
   let saldo = v.punkte || 0;
   let last  = v.lastRewardedMilestone ?? 0;
 
-  // 10%-Meilensteine inkl. 100 %
+  const capped = Math.min(newProgress, 100);
   const from = Math.floor(Math.max(last,0)/10);
-  const to   = Math.floor((Math.min(newProgress,100))/10);
+  const to   = Math.floor(capped/10);
+
   if (to > from){
-    for(let m=from+1; m<=to && m<10; m++){ saldo += 1; last = m*10; }
+    for(let m=from+1; m<=to && m<10; m++){ // 10..90 % jeweils einmal
+      saldo += 1; last = m*10;
+    }
   }
 
-  if (newProgress >= 100){
+  if (capped >= 100){
     if (last < 100){ saldo += 1; last = 100; }
     await update(ref(db, `kinder/${name}`), {
       punkte: saldo,
@@ -253,6 +280,7 @@ async function applyProgressWithRewards(name, newProgress){
       needsGoalAssignment: true,
       farbe: "⚪"
     });
+    await markArchiveCompleted(name); // 100% in Archiv markieren
   } else {
     await update(ref(db, `kinder/${name}`), {
       punkte: saldo,
@@ -262,7 +290,7 @@ async function applyProgressWithRewards(name, newProgress){
   }
 }
 
-/* Buttons Progress */
+/* Progress-Buttons */
 minus10.onclick = ()=>{ if(!currentKid) return; progInput.value = clamp01((+progInput.value||0)-10); };
 minus5.onclick  = ()=>{ if(!currentKid) return; progInput.value = clamp01((+progInput.value||0)-5);  };
 plus5.onclick   = ()=>{ if(!currentKid) return; progInput.value = clamp01((+progInput.value||0)+5);  };
@@ -292,83 +320,201 @@ async function renderAbschluesse(){
         <div><b>${name}</b> hat 100 % erreicht – „${zielTitel}“</div>
         <div class="row">
           <button class="btn" onclick="giveFinal5('${name}')">Bonus +5</button>
-          <button class="btn primary" onclick="advanceGoal('${name}')">Nächstes Ziel</button>
+          <button class="btn primary" onclick="advanceGoalUI('${name}')">Nächstes Ziel</button>
         </div>`;
       abschlussList.appendChild(row);
     }
   });
 }
-
-/* Bonus +5 manuell */
 window.giveFinal5 = async function(name){
   const s = await get(ref(db, `kinder/${name}`));
   if (!s.exists()) return;
   const v = s.val()||{};
   await update(ref(db, `kinder/${name}`), { punkte: (v.punkte||0) + 5 });
   alert(`${name}: +5 Mausdollar vergeben.`);
-  renderAbschluesse();
 };
-
-/* Nächstes Ziel manuell setzen (Dropdown) */
-function renderNextGoalSelect(currentIdx=0){
-  nextGoalSelect.innerHTML = "";
-  GOALS.forEach((t,i)=>{
-    const opt = document.createElement('option');
-    opt.value = i;
-    opt.textContent = `Ziel ${i+1}: ${t}`;
-    nextGoalSelect.appendChild(opt);
-  });
-  const suggested = Math.min(GOALS.length-1, currentIdx+1);
-  nextGoalSelect.value = String(suggested);
-}
-window.advanceGoal = async function(name){
+window.advanceGoalUI = async function(name){
+  // setzt auf nächstes Ziel (index+1) und archiviert sauber
   const s = await get(ref(db, `kinder/${name}`));
   if (!s.exists()) return;
   const v = s.val()||{};
-  const targetIdx = idxClamp(+nextGoalSelect.value||0);
+  const nextIdx = idxClamp((v.activeGoalIndex ?? 0) + 1);
+  await setActiveGoal(name, nextIdx);
+  alert(`${name}: auf „Ziel ${nextIdx+1}“ gesetzt.`);
+  renderAbschluesse();
+  if (currentKid && currentKid.name===name) openKid(name);
+};
+
+/* Ziel jederzeit ändern (Dropdown) */
+function renderGoalDropdowns(currentIdx=0){
+  setGoalSelect.innerHTML = "";
+  GOALS.forEach((t,i)=>{
+    const opt = document.createElement('option');
+    opt.value = i; opt.textContent = `Ziel ${i+1}: ${t}`;
+    setGoalSelect.appendChild(opt);
+  });
+  setGoalSelect.value = String(currentIdx);
+}
+setGoalBtn.onclick = async ()=>{
+  if(!currentKid) return;
+  const idx = idxClamp(+setGoalSelect.value||0);
+  await setActiveGoal(currentKid.name, idx);
+  openKid(currentKid.name);
+  renderAbschluesse();
+};
+
+/* Archiv: Datenmodell
+   /ziele/archiv/{Kind}/{entryId}:
+     { goalIndex, goalTitle, startedAt, endedAt|null, completedAt|null }
+   Im Kind-Knoten: currentAssignmentId (letzte offene Zuordnung)
+*/
+async function ensureAssignmentIfMissing(name){
+  const s = await get(ref(db, `kinder/${name}`));
+  if (!s.exists()) return;
+  const v = s.val()||{};
+  if (v.currentAssignmentId) return;
+  const idx = idxClamp(v.activeGoalIndex ?? 0);
+  const entryRef = push(ref(db, `ziele/archiv/${name}`));
+  const entryId = entryRef.key;
+  await set(entryRef, {
+    goalIndex: idx,
+    goalTitle: GOALS[idx] || "—",
+    startedAt: ts(),
+    endedAt: null,
+    completedAt: (v.progress>=100)?ts():null
+  });
+  await update(ref(db, `kinder/${name}`), { currentAssignmentId: entryId });
+}
+
+async function markArchiveCompleted(name){
+  const s = await get(ref(db, `kinder/${name}`));
+  if (!s.exists()) return;
+  const v = s.val()||{};
+  if (!v.currentAssignmentId) return;
+  await update(ref(db, `ziele/archiv/${name}/${v.currentAssignmentId}`), { completedAt: ts() });
+}
+
+async function closeCurrentAssignment(name){
+  const s = await get(ref(db, `kinder/${name}`));
+  if (!s.exists()) return;
+  const v = s.val()||{};
+  if (!v.currentAssignmentId) return;
+  await update(ref(db, `ziele/archiv/${name}/${v.currentAssignmentId}`), { endedAt: ts() });
+}
+
+async function startNewAssignment(name, goalIndex){
+  const entryRef = push(ref(db, `ziele/archiv/${name}`));
+  const entryId = entryRef.key;
+  await set(entryRef, {
+    goalIndex: goalIndex,
+    goalTitle: GOALS[goalIndex] || "—",
+    startedAt: ts(),
+    endedAt: null,
+    completedAt: null
+  });
+  await update(ref(db, `kinder/${name}`), { currentAssignmentId: entryId });
+}
+
+/* Aktives Ziel setzen + Archiv pflegen */
+async function setActiveGoal(name, targetIdx){
+  const s = await get(ref(db, `kinder/${name}`));
+  if (!s.exists()) return;
+  const v = s.val()||{};
+  // schließe alte Zuordnung
+  if (v.currentAssignmentId) await closeCurrentAssignment(name);
+  // setze neues Ziel + Reset Fortschritt
   await update(ref(db, `kinder/${name}`), {
     activeGoalIndex: targetIdx,
     progress: 0,
     lastRewardedMilestone: 0,
     needsGoalAssignment: false
   });
-  alert(`${name}: auf „Ziel ${targetIdx+1}“ gesetzt.`);
-  if (currentKid && currentKid.name===name) openKid(name);
-  renderAbschluesse();
-};
-
-/* Ziele verwalten */
-function renderGoalsManager(){
-  goalsList.innerHTML = "";
-  GOALS.forEach((t,i)=>{
-    const row = document.createElement('div');
-    row.className = 'goal-item';
-    row.innerHTML = `
-      <span class="pill">#${i+1}</span>
-      <input id="goalInput_${i}" class="input" value="${t.replace(/"/g,'&quot;')}">
-      <button class="btn" onclick="moveUp(${i})">↑</button>
-      <button class="btn" onclick="moveDown(${i})">↓</button>
-      <button class="btn danger" onclick="delGoal(${i})">✕</button>`;
-    goalsList.appendChild(row);
-  });
+  await startNewAssignment(name, targetIdx);
 }
-window.moveUp = function(i){ if(i<=0) return; [GOALS[i-1],GOALS[i]]=[GOALS[i],GOALS[i-1]]; renderGoalsManager(); renderNextGoalSelect(); };
-window.moveDown = function(i){ if(i>=GOALS.length-1) return; [GOALS[i+1],GOALS[i]]=[GOALS[i],GOALS[i+1]]; renderGoalsManager(); renderNextGoalSelect(); };
-window.delGoal = function(i){ GOALS.splice(i,1); renderGoalsManager(); renderNextGoalSelect(); };
 
-addGoal.onclick = ()=>{ const t = (newGoalText.value||"").trim(); if(!t) return; GOALS.push(t); newGoalText.value=""; renderGoalsManager(); renderNextGoalSelect(); };
-saveGoals.onclick = async ()=>{
-  // read edits
-  GOALS = GOALS.map((t,i)=>{
-    const el = document.getElementById(`goalInput_${i}`);
-    return el ? el.value.trim() : t;
-  }).filter(t=>t.length>0);
-  await set(ref(db,"ziele/meta"), GOALS);
-  alert("Ziele gespeichert.");
-  renderGoalsManager(); renderNextGoalSelect();
-};
+/* Archiv-UI */
+function renderArchKidSelect(){
+  archKidSelect.innerHTML = "";
+  const optAll = document.createElement('option'); optAll.value="*"; optAll.textContent="Alle Kinder";
+  archKidSelect.appendChild(optAll);
+  KIDS.forEach(k=>{
+    const o = document.createElement('option');
+    o.value = k.name; o.textContent = k.name;
+    archKidSelect.appendChild(o);
+  });
+  archKidSelect.onchange = ()=>renderArchive(archKidSelect.value==="*" ? null : archKidSelect.value);
+}
+async function renderArchive(filterName=null){
+  // wenn kein Filter übergeben wurde: nehme aktuelles Kind
+  const nameFilter = filterName ?? (currentKid?.name ?? null);
+  archKidSelect.value = nameFilter ? nameFilter : "*";
 
-loadGoals();
+  archBody.innerHTML = "";
+  if (nameFilter){
+    const s = await get(ref(db, `ziele/archiv/${nameFilter}`));
+    const rows = [];
+    if (s.exists()){
+      s.forEach(ch=>{
+        const v = ch.val()||{};
+        rows.push([nameFilter, v.goalIndex, v.goalTitle, v.startedAt, v.endedAt, v.completedAt]);
+      });
+    }
+    rows.sort((a,b)=> new Date(b[3]) - new Date(a[3])); // nach startedAt desc
+    rows.forEach(r=>appendArchRow(...r));
+  } else {
+    // Alle Kinder
+    for (const k of KIDS){
+      const s = await get(ref(db, `ziele/archiv/${k.name}`));
+      if (!s.exists()) continue;
+      const rows = [];
+      s.forEach(ch=>{
+        const v = ch.val()||{};
+        rows.push([k.name, v.goalIndex, v.goalTitle, v.startedAt, v.endedAt, v.completedAt]);
+      });
+      rows.sort((a,b)=> new Date(b[3]) - new Date(a[3]));
+      rows.forEach(r=>appendArchRow(...r));
+    }
+  }
+}
+function appendArchRow(kind, idx, title, startedAt, endedAt, completedAt){
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td>${kind}</td>
+    <td>Ziel ${Number(idx)+1}</td>
+    <td title="${startedAt||''}">${fmt(startedAt)||'—'}</td>
+    <td title="${endedAt||''}">${fmt(endedAt)||'—'}</td>
+    <td title="${completedAt||''}">${fmt(completedAt)||'—'}</td>`;
+  archBody.appendChild(tr);
+}
+
+/* Beim ersten Laden: für aktuelles Kind eine offene Zuordnung sicherstellen */
+window.addEventListener('load', async ()=>{
+  // für alle Kinder ohne currentAssignmentId initial anlegen
+  const s = await get(ref(db,"kinder"));
+  if (s.exists()){
+    const ops = [];
+    s.forEach(ch=>{
+      const name = ch.key; const v = ch.val()||{};
+      if (v.farbe === undefined) return;
+      if (!v.currentAssignmentId){
+        ops.push((async ()=>{
+          const idx = idxClamp(v.activeGoalIndex ?? 0);
+          const entryRef = push(ref(db, `ziele/archiv/${name}`));
+          const entryId = entryRef.key;
+          await set(entryRef, {
+            goalIndex: idx,
+            goalTitle: GOALS[idx] || "—",
+            startedAt: ts(),
+            endedAt: null,
+            completedAt: (v.progress>=100)?ts():null
+          });
+          await update(ref(db, `kinder/${name}`), { currentAssignmentId: entryId });
+        })());
+      }
+    });
+    await Promise.all(ops);
+  }
+});
 </script>
 </body>
 </html>
