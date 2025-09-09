@@ -44,13 +44,11 @@
 <body>
 <h1>Ziele-Admin</h1>
 <div class="layout">
-  <!-- Kinderliste -->
   <div class="card">
     <input id="search" class="search" placeholder="Kind suchen…" />
     <div id="kidList" class="list" style="margin-top:12px"></div>
   </div>
 
-  <!-- Detail & Zielverwaltung Tabs -->
   <div class="card">
     <div class="row" style="justify-content:space-between;margin-bottom:8px">
       <div class="row">
@@ -80,7 +78,7 @@ const app = initializeApp({
 });
 const db = getDatabase(app);
 
-/* Default-Ziele */
+/* Defaults für Erstinitialisierung */
 const DEFAULT_GOALS = [
   "Ich bin freundlich zu anderen.",
   "Ich rede in angemessener Lautstärke.",
@@ -106,6 +104,7 @@ let currentKid = null;
 
 const goalsRef = ref(db, "ziele/meta");
 
+/* Ziele laden / initialisieren */
 async function ensureGoals(){
   const s = await get(goalsRef);
   if (!s.exists() || !Array.isArray(s.val()) || s.val().length===0){
@@ -116,7 +115,22 @@ async function ensureGoals(){
   }
 }
 
-/* Nur Kinder mit Farbe laden */
+/* Tabs */
+const tabKid = document.getElementById('tabKid');
+const tabGoals = document.getElementById('tabGoals');
+const detail = document.getElementById('detail');
+const goalsPanel = document.getElementById('goalsPanel');
+const tabHint = document.getElementById('tabHint');
+
+tabKid.onclick = ()=>{ goalsPanel.style.display="none"; detail.style.display="block"; tabHint.textContent="Aktuelles Ziel und Fortschritt eines Kindes verwalten."; if(currentKid) openDetail(currentKid); else detail.innerHTML = `<p class="muted">Kind wählen.</p>`; };
+tabGoals.onclick = ()=>{ detail.style.display="none"; goalsPanel.style.display="block"; tabHint.textContent="Ziele bearbeiten, hinzufügen, Reihenfolge ändern."; renderGoalsManager(); };
+
+/* Suche + Liste */
+const search = document.getElementById('search');
+const kidList = document.getElementById('kidList');
+search.addEventListener('input', renderKidList);
+
+/* Nur Kinder mit farbe laden */
 onValue(ref(db, "kinder"), async (snap)=>{
   await ensureGoals();
   const arr = [];
@@ -135,15 +149,272 @@ onValue(ref(db, "kinder"), async (snap)=>{
   allKids = arr.sort((a,b)=>a.name.localeCompare(b.name,'de'));
   renderKidList();
   if (currentKid) openDetail(currentKid);
+  if (!currentKid) { tabKid.click(); } // Standard-Tab aktivieren
 });
 
-/* Tabs + Suche etc. – (Rest wie vorher, nicht gekürzt) ... */
+function renderKidList(){
+  const q = (search.value||"").toLowerCase();
+  kidList.innerHTML = "";
+  allKids
+    .filter(k=>k.name.toLowerCase().includes(q))
+    .forEach(k=>{
+      const div = document.createElement('div');
+      div.className = 'kid';
+      div.innerHTML = `
+        <div>
+          <div><strong>${escapeHTML(k.name)}</strong></div>
+          <div class="small muted">Ziel: <span class="tag">#${(k.activeGoalIndex??0)+1}</span></div>
+        </div>
+        <div class="small muted">${k.progress}%</div>
+      `;
+      div.onclick = ()=>{ currentKid = k.name; tabKid.click(); openDetail(k.name); };
+      kidList.appendChild(div);
+    });
+}
 
-/* Hilfsfunktionen */
+/* Detailansicht Kind */
+async function openDetail(name){
+  const snap = await get(ref(db, `kinder/${name}`));
+  if(!snap.exists()){ detail.innerHTML = `<p>Kein Datensatz.</p>`; return; }
+  const v = snap.val()||{};
+  if (v.farbe === undefined){ detail.innerHTML = `<p class="muted">Dieses Konto hat keine Farbe und wird nicht geführt.</p>`; return; }
+
+  const kid = {
+    name,
+    punkte: v.punkte||0,
+    activeGoalIndex: clampIndex(v.activeGoalIndex ?? 0),
+    progress: v.progress ?? 0,
+    lastRewardedMilestone: v.lastRewardedMilestone ?? 0
+  };
+
+  const prevGoals = GOALS.slice(0, kid.activeGoalIndex).map((t,i)=>`#${i+1} ${t}`);
+  const currGoal  = GOALS[kid.activeGoalIndex] ?? "—";
+  const nextGoals = GOALS.slice(kid.activeGoalIndex+1).map((t,i)=>`#${kid.activeGoalIndex+2+i} ${t}`);
+
+  detail.innerHTML = `
+    <div class="row" style="justify-content:space-between;align-items:flex-start">
+      <div>
+        <h2 style="margin:0 0 4px">${escapeHTML(kid.name)}</h2>
+        <div class="muted small">Kontostand: ${kid.punkte} Mausdollar</div>
+      </div>
+      <button class="ghost" id="btnInit">Felder initialisieren</button>
+    </div>
+
+    <div class="card" style="margin-top:12px">
+      <div class="col">
+        <label><strong>Aktuelles Ziel</strong></label>
+        <div class="row">
+          <select id="goalSelect"></select>
+          <button id="saveGoal">Ziel setzen</button>
+        </div>
+      </div>
+
+      <div class="col" style="margin-top:12px">
+        <label><strong>Fortschritt (%)</strong></label>
+        <div class="row">
+          <input id="progInput" type="number" min="0" max="100" step="1" style="width:120px" />
+          <button id="saveProg">Fortschritt speichern</button>
+          <button class="ghost" id="plus5">+5 %</button>
+          <button class="ghost" id="minus5">−5 %</button>
+        </div>
+        <div class="progress-wrap" style="margin-top:8px">
+          <div id="bar" class="progress" style="width:${kid.progress}%"></div>
+        </div>
+        <div class="small muted" id="milestoneHint" style="margin-top:6px"></div>
+      </div>
+    </div>
+
+    <div class="split" style="margin-top:12px">
+      <div class="card">
+        <div class="small muted">Vorherige Ziele</div>
+        <div style="margin-top:8px">${prevGoals.length? prevGoals.map(p=>`<div class="pill">${escapeHTML(p)}</div>`).join(' '):'<span class="muted small">Keine</span>'}</div>
+      </div>
+      <div class="card">
+        <div class="small muted">Zukünftige Ziele</div>
+        <div style="margin-top:8px">${nextGoals.length? nextGoals.map(p=>`<div class="pill">${escapeHTML(p)}</div>`).join(' '):'<span class="muted small">Keine</span>'}</div>
+      </div>
+    </div>
+  `;
+
+  // Select befüllen
+  const sel = document.getElementById('goalSelect');
+  GOALS.forEach((t,i)=>{
+    const opt = document.createElement('option');
+    opt.value = String(i);
+    opt.textContent = `#${i+1} – ${t}`;
+    if (i === kid.activeGoalIndex) opt.selected = true;
+    sel.appendChild(opt);
+  });
+
+  const progInput = document.getElementById('progInput');
+  progInput.value = kid.progress;
+
+  document.getElementById('btnInit').onclick = async ()=>{
+    await update(ref(db, `kinder/${name}`), {
+      activeGoalIndex: kid.activeGoalIndex ?? 0,
+      progress: kid.progress ?? 0,
+      lastRewardedMilestone: kid.lastRewardedMilestone ?? 0
+    });
+    alert("Initialisiert.");
+  };
+
+  document.getElementById('saveGoal').onclick = async ()=>{
+    const idx = parseInt(sel.value,10);
+    await update(ref(db, `kinder/${name}`), {
+      activeGoalIndex: clampIndex(idx),
+      progress: 0,
+      lastRewardedMilestone: 0
+    });
+    openDetail(name);
+  };
+
+  document.getElementById('saveProg').onclick = async ()=>{
+    const target = clamp01(parseInt(progInput.value,10)||0);
+    await applyProgressWithRewards(name, target);
+    openDetail(name);
+  };
+  document.getElementById('plus5').onclick = async ()=>{
+    const target = clamp01((parseInt(progInput.value,10)||0) + 5);
+    await applyProgressWithRewards(name, target);
+    openDetail(name);
+  };
+  document.getElementById('minus5').onclick = async ()=>{
+    const target = clamp01((parseInt(progInput.value,10)||0) - 5);
+    await applyProgressWithRewards(name, target);
+    openDetail(name);
+  };
+
+  document.getElementById('milestoneHint').textContent =
+    `Automatik: +1 Mausdollar bei jedem neuen vollen 10-%-Schritt. Bei 100 % zusätzlich +5, nächstes Ziel, Reset.`;
+}
+
+/* Ziele-Manager */
+function renderGoalsManager(){
+  goalsPanel.innerHTML = `
+    <div class="row" style="justify-content:space-between;align-items:center">
+      <h2 style="margin:0">Ziele verwalten</h2>
+      <div class="small muted">Reihenfolge wirkt sofort auf die Anzeige</div>
+    </div>
+    <div id="goalsList" class="col" style="margin-top:10px; gap:8px"></div>
+    <div class="row" style="margin-top:10px">
+      <input id="newGoal" type="text" placeholder="Neues Ziel…" style="flex:1" />
+      <button id="addGoal" class="ok">Hinzufügen</button>
+      <button id="saveGoals">Speichern</button>
+      <button id="reloadGoals" class="ghost">Neu laden</button>
+    </div>
+  `;
+
+  const goalsList = document.getElementById('goalsList');
+  const newGoal = document.getElementById('newGoal');
+
+  function draw(){
+    goalsList.innerHTML = "";
+    GOALS.forEach((text, i)=>{
+      const row = document.createElement('div');
+      row.className = 'goal-row';
+      row.innerHTML = `
+        <div class="small muted">#${i+1}</div>
+        <input type="text" value="${escapeAttr(text)}" data-idx="${i}" />
+        <div class="goal-actions">
+          <button class="ghost" data-act="up" data-idx="${i}">↑</button>
+          <button class="ghost" data-act="down" data-idx="${i}">↓</button>
+          <button class="danger" data-act="del" data-idx="${i}">Löschen</button>
+        </div>
+        <div class="small muted">Len: ${text.length}</div>
+      `;
+      goalsList.appendChild(row);
+    });
+  }
+  draw();
+
+  goalsList.onclick = (e)=>{
+    const btn = e.target.closest('button'); if(!btn) return;
+    const act = btn.dataset.act; const idx = parseInt(btn.dataset.idx,10);
+    if (act==="up" && idx>0){ [GOALS[idx-1], GOALS[idx]] = [GOALS[idx], GOALS[idx-1]]; draw(); }
+    if (act==="down" && idx<GOALS.length-1){ [GOALS[idx+1], GOALS[idx]] = [GOALS[idx], GOALS[idx+1]]; draw(); }
+    if (act==="del"){ GOALS.splice(idx,1); draw(); }
+  };
+
+  goalsList.addEventListener('input', (e)=>{
+    const inp = e.target.closest('input[type="text"]'); if(!inp) return;
+    const idx = parseInt(inp.dataset.idx,10);
+    GOALS[idx] = inp.value;
+  });
+
+  document.getElementById('addGoal').onclick = ()=>{
+    const t = (newGoal.value||"").trim(); if(!t) return;
+    GOALS.push(t); newGoal.value=""; draw();
+  };
+
+  document.getElementById('saveGoals').onclick = async ()=>{
+    await set(goalsRef, GOALS);
+    alert("Ziele gespeichert.");
+    // Kinder-Indizes clampen, falls Liste kürzer wurde
+    const ks = await get(ref(db,"kinder"));
+    if (ks.exists()){
+      ks.forEach(ch=>{
+        const name = ch.key;
+        const v = ch.val()||{};
+        if (v.farbe === undefined) return; // nur Ziel-Konten
+        const idx = clampIndex(v.activeGoalIndex ?? 0);
+        if ((v.activeGoalIndex??0)!==idx){
+          update(ref(db,`kinder/${name}`), { activeGoalIndex: idx });
+        }
+      });
+    }
+  };
+
+  document.getElementById('reloadGoals').onclick = async ()=>{
+    await ensureGoals();
+    draw();
+  };
+}
+
+/* Kernlogik: Meilensteine + Abschluss */
+async function applyProgressWithRewards(name, newProgress){
+  const s = await get(ref(db, `kinder/${name}`));
+  if(!s.exists()) return;
+  const v = s.val()||{};
+  const last = v.lastRewardedMilestone ?? 0;
+  let saldo = v.punkte || 0;
+
+  await update(ref(db, `kinder/${name}`), { progress: newProgress });
+
+  const from = Math.floor(Math.max(last, 0) / 10);
+  const to   = Math.floor(newProgress / 10);
+  let newLast = last;
+  if (to > from){
+    for(let m=from+1; m<=to && m<10; m++){
+      saldo += 1; newLast = m*10;
+    }
+  }
+
+  if (newProgress >= 100){
+    saldo += 1; // 100%-Milestone
+    newLast = 100;
+    saldo += 5; // Abschlussbonus
+    await update(ref(db, `kinder/${name}`), {
+      punkte: saldo,
+      progress: 0,
+      lastRewardedMilestone: 0,
+      activeGoalIndex: clampIndex((v.activeGoalIndex ?? 0) + 1)
+    });
+  } else {
+    await update(ref(db, `kinder/${name}`), {
+      punkte: saldo,
+      lastRewardedMilestone: newLast
+    });
+  }
+}
+
+/* Utils */
 function clamp01(x){ return Math.max(0, Math.min(100, x|0)); }
 function clampIndex(i){ return Math.max(0, Math.min((GOALS.length?GOALS.length:1)-1, i|0)); }
 function escapeHTML(s){ return (s??"").toString().replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])) }
 function escapeAttr(s){ return escapeHTML(s).replace(/"/g,'&quot;'); }
+
+/* Start-Tab */
+tabKid.click();
 </script>
 </body>
 </html>
