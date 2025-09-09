@@ -16,7 +16,7 @@
   .search{width:100%;padding:10px;border:1px solid var(--border);border-radius:10px}
   .list{display:flex;flex-direction:column;gap:8px;margin-top:10px;max-height:70vh;overflow:auto}
   .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-  .kid{display:flex;justify-content:space-between;align-items:center;padding:10px;border:1px solid var(--border);border-radius:10px;cursor:pointer;background:#fff}
+  .kid{display:flex;justify-content:space-between;align-items:center;padding:10px;border:1px solid var(--border);border-radius:10px;background:#fff;cursor:pointer}
   .kid:hover{background:#f9fafb}
   .btn{background:#fff;border:1px solid var(--border);border-radius:10px;padding:8px 12px;cursor:pointer;font-weight:600}
   .btn:hover{background:#f3f4f6}
@@ -49,11 +49,11 @@
 
   <!-- Details + Verwaltung -->
   <div class="card">
-    <!-- Abschlüsse warten -->
-    <div class="section-title">Abschlüsse warten auf Freigabe</div>
-    <div id="abschlussList" class="list callout"></div>
-
-    <div class="divider"></div>
+    <!-- Abschlüsse warten (dynamisch sichtbar) -->
+    <div id="abschlussSection" class="callout" style="display:none;margin-bottom:12px">
+      <div class="section-title" style="margin:0 0 6px">Abschlüsse warten auf Freigabe</div>
+      <div id="abschlussList" class="list" style="max-height:180px"></div>
+    </div>
 
     <div class="two-col">
       <!-- Detail Kind -->
@@ -80,7 +80,7 @@
 
         <div class="divider"></div>
 
-        <!-- NEU: Ziel jederzeit ändern -->
+        <!-- Ziel jederzeit ändern -->
         <div class="section-title">Aktives Ziel ändern</div>
         <select id="setGoalSelect" class="select"></select>
         <div class="row" style="margin-top:8px">
@@ -105,7 +105,7 @@
           <span class="muted">(Zielverläufe)</span>
         </div>
         <select id="archKidSelect" class="select" style="margin-top:6px"></select>
-        <div id="archList" class="list" style="max-height:260px;overflow:auto;margin-top:8px">
+        <div class="list" style="max-height:260px;overflow:auto;margin-top:8px">
           <table class="table">
             <thead><tr><th>Kind</th><th>Ziel</th><th>Von</th><th>Bis</th><th>100%</th></tr></thead>
             <tbody id="archBody"></tbody>
@@ -135,6 +135,7 @@ const db = getDatabase(app);
 /* DOM */
 const search = document.getElementById('search');
 const kidList = document.getElementById('kidList');
+const abschlussSection = document.getElementById('abschlussSection');
 const abschlussList = document.getElementById('abschlussList');
 
 const kidNameEl = document.getElementById('kidName');
@@ -173,28 +174,40 @@ const ts = () => new Date().toISOString();
 const fmt = s => { const d = new Date(s); return isNaN(+d) ? "—" :
   `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; };
 
-/* Ziele laden */
+/* Ziele laden – robust (Array oder Objekt) */
 async function loadGoals(){
   const s = await get(ref(db,"ziele/meta"));
-  if (s.exists() && Array.isArray(s.val())) GOALS = s.val();
-  else GOALS = [
-    "Ich bin freundlich zu anderen.",
-    "Ich rede in angemessener Lautstärke.",
-    "Ich höre anderen zu und lasse sie ausreden.",
-    "Ich respektiere die Grenzen anderer Kinder.",
-    "Ich streite ohne Schubsen, Schlagen oder Beleidigen.",
-    "Ich teile Dinge (Materialien, Essen).",
-    "Ich helfe anderen, wenn sie Unterstützung brauchen.",
-    "Ich erinnere andere freundlich an Regeln.",
-    "Ich bleibe an meinem Platz sitzen.",
-    "Ich spiele nicht mit dem Essen.",
-    "Ich räume meine Sachen weg.",
-    "Ich gehe langsam durch den Flur, ohne zu drängeln.",
-    "Ich hole mir Hilfe, wenn ich alleine nicht weiterkomme.",
-    "Ich plane meine Zeit eigenständig (Hausaufgaben, Spielen, Essen).",
-    "Ich halte Regeln auch ohne Erinnerung ein.",
-    "Ich bin ein Vorbild für andere Kinder."
-  ];
+  const val = s.exists() ? s.val() : null;
+
+  if (Array.isArray(val)) {
+    GOALS = val.filter(g => g && String(g).trim() !== "");
+  } else if (val && typeof val === "object") {
+    const arr = Object.values(val);
+    arr.sort((a,b)=> (a.order??999) - (b.order??999));
+    GOALS = arr.map(g => g.text ?? String(g)).filter(Boolean);
+  } else {
+    GOALS = [];
+  }
+  if (GOALS.length === 0) {
+    GOALS = [
+      "Ich bin freundlich zu anderen.",
+      "Ich rede in angemessener Lautstärke.",
+      "Ich höre anderen zu und lasse sie ausreden.",
+      "Ich respektiere die Grenzen anderer Kinder.",
+      "Ich streite ohne Schubsen, Schlagen oder Beleidigen.",
+      "Ich teile Dinge (Materialien, Essen).",
+      "Ich helfe anderen, wenn sie Unterstützung brauchen.",
+      "Ich erinnere andere freundlich an Regeln.",
+      "Ich bleibe an meinem Platz sitzen.",
+      "Ich spiele nicht mit dem Essen.",
+      "Ich räume meine Sachen weg.",
+      "Ich gehe langsam durch den Flur, ohne zu drängeln.",
+      "Ich hole mir Hilfe, wenn ich alleine nicht weiterkomme.",
+      "Ich plane meine Zeit eigenständig (Hausaufgaben, Spielen, Essen).",
+      "Ich halte Regeln auch ohne Erinnerung ein.",
+      "Ich bin ein Vorbild für andere Kinder."
+    ];
+  }
   renderGoalsManager();
   renderGoalDropdowns();
 }
@@ -203,13 +216,26 @@ async function loadGoals(){
 onValue(ref(db,"kinder"), async (snap)=>{
   await loadGoals();
   KIDS.length = 0;
+
+  if (!snap.exists()) {
+    kidList.innerHTML = "<div class='muted'>Keine Kinder in der DB.</div>";
+    renderAbschluesse();
+    renderArchKidSelect();
+    return;
+  }
+
   snap.forEach(ch=>{
     const v = ch.val()||{};
-    if (v.farbe === undefined) return;
-    KIDS.push({ name: ch.key, ...v });
+    if (v.farbe !== undefined) KIDS.push({ name: ch.key, ...v });
   });
-  KIDS.sort((a,b)=>a.name.localeCompare(b.name,'de'));
-  renderKidList();
+
+  if (KIDS.length === 0) {
+    kidList.innerHTML = "<div class='muted'>Es gibt Kinder, aber keines hat ein Farbfeld. Setze erst eine Farbe im Mäusegruppe-Admin.</div>";
+  } else {
+    KIDS.sort((a,b)=>a.name.localeCompare(b.name,'de'));
+    renderKidList();
+  }
+
   renderAbschluesse();
   renderArchKidSelect();
   if (currentKid) openKid(currentKid.name);
@@ -232,9 +258,9 @@ search.addEventListener('input', renderKidList);
 /* Detail */
 async function openKid(name){
   const s = await get(ref(db,`kinder/${name}`));
-  if (!s.exists()) return;
+  if (!s.exists()) { alert("Kind nicht gefunden."); return; }
   const v = s.val()||{};
-  if (v.farbe === undefined) return;
+  if (v.farbe === undefined) { alert("Dieses Kind hat kein Farbkonto."); return; }
   currentKid = { name, ...v };
 
   const idx = idxClamp(v.activeGoalIndex ?? 0);
@@ -253,7 +279,7 @@ async function openKid(name){
   renderArchive(name);
 }
 
-/* Nur neue, höhere Meilensteine belohnen */
+/* Meilensteine nur einmal belohnen */
 async function applyProgressWithRewards(name, newProgress){
   const s = await get(ref(db, `kinder/${name}`));
   if(!s.exists()) return;
@@ -266,7 +292,7 @@ async function applyProgressWithRewards(name, newProgress){
   const to   = Math.floor(capped/10);
 
   if (to > from){
-    for(let m=from+1; m<=to && m<10; m++){ // 10..90 % jeweils einmal
+    for(let m=from+1; m<=to && m<10; m++){ // 10..90 % je EINMAL
       saldo += 1; last = m*10;
     }
   }
@@ -281,11 +307,12 @@ async function applyProgressWithRewards(name, newProgress){
       farbe: "⚪"
     });
     await markArchiveCompleted(name); // 100% in Archiv markieren
+    renderAbschluesse();
   } else {
     await update(ref(db, `kinder/${name}`), {
       punkte: saldo,
       lastRewardedMilestone: last,
-      progress: clamp01(newProgress)
+      progress: clamp01(capped)
     });
   }
 }
@@ -300,31 +327,38 @@ saveProg.onclick = async ()=>{
   const p = clamp01(+progInput.value||0);
   await applyProgressWithRewards(currentKid.name, p);
   openKid(currentKid.name);
-  renderAbschluesse();
 };
 
-/* Abschlüsse warten */
+/* Abschlüsse warten (sichtbar nur bei Bedarf) */
 async function renderAbschluesse(){
-  abschlussList.innerHTML = "";
-  const snap = await get(ref(db,"kinder"));
-  if (!snap.exists()) return;
-  snap.forEach(ch=>{
-    const name = ch.key; const v = ch.val()||{};
-    if (v.farbe === undefined) return;
-    if (v.progress === 100 && v.needsGoalAssignment){
-      const idx = idxClamp(v.activeGoalIndex ?? 0);
-      const zielTitel = GOALS[idx] || "—";
-      const row = document.createElement('div');
-      row.className = 'kid';
-      row.innerHTML = `
-        <div><b>${name}</b> hat 100 % erreicht – „${zielTitel}“</div>
-        <div class="row">
-          <button class="btn" onclick="giveFinal5('${name}')">Bonus +5</button>
-          <button class="btn primary" onclick="advanceGoalUI('${name}')">Nächstes Ziel</button>
-        </div>`;
-      abschlussList.appendChild(row);
-    }
-  });
+  const box = document.getElementById("abschlussList");
+  box.innerHTML = "";
+  let count = 0;
+
+  const [snap, goalsOK] = await Promise.all([
+    get(ref(db,"kinder")), Promise.resolve(true)
+  ]);
+  if (snap.exists()){
+    snap.forEach(ch=>{
+      const name = ch.key; const v = ch.val()||{};
+      if (v.farbe === undefined) return;
+      if (v.progress === 100 && v.needsGoalAssignment){
+        const idx = idxClamp(v.activeGoalIndex ?? 0);
+        const zielTitel = GOALS[idx] || "—";
+        const row = document.createElement("div");
+        row.className = "kid";
+        row.innerHTML = `
+          <div><b>${name}</b> hat 100 % erreicht – „${zielTitel}“</div>
+          <div class="row">
+            <button class="btn" onclick="giveFinal5('${name}')">Bonus +5</button>
+            <button class="btn primary" onclick="advanceGoalUI('${name}')">Nächstes Ziel</button>
+          </div>`;
+        box.appendChild(row);
+        count++;
+      }
+    });
+  }
+  abschlussSection.style.display = count>0 ? "block" : "none";
 }
 window.giveFinal5 = async function(name){
   const s = await get(ref(db, `kinder/${name}`));
@@ -334,7 +368,6 @@ window.giveFinal5 = async function(name){
   alert(`${name}: +5 Mausdollar vergeben.`);
 };
 window.advanceGoalUI = async function(name){
-  // setzt auf nächstes Ziel (index+1) und archiviert sauber
   const s = await get(ref(db, `kinder/${name}`));
   if (!s.exists()) return;
   const v = s.val()||{};
@@ -363,10 +396,10 @@ setGoalBtn.onclick = async ()=>{
   renderAbschluesse();
 };
 
-/* Archiv: Datenmodell
+/* Archiv: Struktur
    /ziele/archiv/{Kind}/{entryId}:
      { goalIndex, goalTitle, startedAt, endedAt|null, completedAt|null }
-   Im Kind-Knoten: currentAssignmentId (letzte offene Zuordnung)
+   Im Kind: currentAssignmentId = offene Zuordnung
 */
 async function ensureAssignmentIfMissing(name){
   const s = await get(ref(db, `kinder/${name}`));
@@ -420,9 +453,7 @@ async function setActiveGoal(name, targetIdx){
   const s = await get(ref(db, `kinder/${name}`));
   if (!s.exists()) return;
   const v = s.val()||{};
-  // schließe alte Zuordnung
   if (v.currentAssignmentId) await closeCurrentAssignment(name);
-  // setze neues Ziel + Reset Fortschritt
   await update(ref(db, `kinder/${name}`), {
     activeGoalIndex: targetIdx,
     progress: 0,
@@ -445,24 +476,21 @@ function renderArchKidSelect(){
   archKidSelect.onchange = ()=>renderArchive(archKidSelect.value==="*" ? null : archKidSelect.value);
 }
 async function renderArchive(filterName=null){
-  // wenn kein Filter übergeben wurde: nehme aktuelles Kind
   const nameFilter = filterName ?? (currentKid?.name ?? null);
   archKidSelect.value = nameFilter ? nameFilter : "*";
 
   archBody.innerHTML = "";
   if (nameFilter){
     const s = await get(ref(db, `ziele/archiv/${nameFilter}`));
+    if (!s.exists()) return;
     const rows = [];
-    if (s.exists()){
-      s.forEach(ch=>{
-        const v = ch.val()||{};
-        rows.push([nameFilter, v.goalIndex, v.goalTitle, v.startedAt, v.endedAt, v.completedAt]);
-      });
-    }
-    rows.sort((a,b)=> new Date(b[3]) - new Date(a[3])); // nach startedAt desc
+    s.forEach(ch=>{
+      const v = ch.val()||{};
+      rows.push([nameFilter, v.goalIndex, v.goalTitle, v.startedAt, v.endedAt, v.completedAt]);
+    });
+    rows.sort((a,b)=> new Date(b[3]) - new Date(a[3]));
     rows.forEach(r=>appendArchRow(...r));
   } else {
-    // Alle Kinder
     for (const k of KIDS){
       const s = await get(ref(db, `ziele/archiv/${k.name}`));
       if (!s.exists()) continue;
@@ -487,9 +515,35 @@ function appendArchRow(kind, idx, title, startedAt, endedAt, completedAt){
   archBody.appendChild(tr);
 }
 
-/* Beim ersten Laden: für aktuelles Kind eine offene Zuordnung sicherstellen */
+/* Ziele verwalten UI */
+function renderGoalsManager(){
+  goalsList.innerHTML = "";
+  GOALS.forEach((txt,i)=>{
+    const row = document.createElement('div');
+    row.className="goal-item";
+    const input = document.createElement('input');
+    input.value = txt;
+    input.oninput = e=>{ GOALS[i] = e.target.value; };
+    const up = document.createElement('button'); up.className='btn'; up.textContent='↑';
+    up.onclick = ()=>{ if(i>0){ [GOALS[i-1],GOALS[i]]=[GOALS[i],GOALS[i-1]]; renderGoalsManager(); renderGoalDropdowns(); }};
+    const down = document.createElement('button'); down.className='btn'; down.textContent='↓';
+    down.onclick = ()=>{ if(i<GOALS.length-1){ [GOALS[i+1],GOALS[i]]=[GOALS[i],GOALS[i+1]]; renderGoalsManager(); renderGoalDropdowns(); }};
+    const del = document.createElement('button'); del.className='btn danger'; del.textContent='Löschen';
+    del.onclick = ()=>{ GOALS.splice(i,1); renderGoalsManager(); renderGoalDropdowns(); };
+    row.appendChild(input); row.appendChild(up); row.appendChild(down); row.appendChild(del);
+    goalsList.appendChild(row);
+  });
+}
+addGoal.onclick = ()=>{ const t = (newGoalText.value||"").trim(); if(!t) return; GOALS.push(t); newGoalText.value=""; renderGoalsManager(); renderGoalDropdowns(); };
+saveGoals.onclick = async ()=>{
+  await set(ref(db,"ziele/meta"), GOALS); // als Array speichern
+  alert("Ziele gespeichert.");
+  renderGoalDropdowns();
+  if (currentKid) openKid(currentKid.name);
+};
+
+/* Erstinitialisierung: offene Archiv-Zuordnung für Kinder ohne currentAssignmentId */
 window.addEventListener('load', async ()=>{
-  // für alle Kinder ohne currentAssignmentId initial anlegen
   const s = await get(ref(db,"kinder"));
   if (s.exists()){
     const ops = [];
