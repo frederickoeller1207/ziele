@@ -1,188 +1,689 @@
-<!-- index.html (Kinderansicht) -->
 <!DOCTYPE html>
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Zielkarte</title>
-  <link href="https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@400;600&display=swap" rel="stylesheet">
+  <title>Zielkarte – Admin</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@400;600;800&display=swap" rel="stylesheet">
+
   <style>
     :root{
-      --bg:#f9f9fb; --card:#ffffff; --txt:#1c1c1e; --muted:#6b7280;
-      --border:#e5e5ea; --radius:14px; --shadow:0 2px 8px rgba(0,0,0,0.06);
+      --bg:#f6f7fb;
+      --card:#ffffff;
+      --txt:#111827;
+      --muted:#6b7280;
+      --border:#e5e7eb;
+      --accent:#007aff;
+      --radius:16px;
+      --shadow:0 6px 18px rgba(0,0,0,.08);
+      --green:#22c55e;
     }
-    body{font-family:'SF Pro Display',system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--txt);margin:0;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:16px}
-    h1{margin:12px 0 14px;font-size:26px;font-weight:700;text-align:center}
-    .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;width:95%;max-width:720px}
-    .search{width:100%;max-width:340px;font-size:16px;padding:12px;margin:0 auto 12px;border:1px solid var(--border);border-radius:12px;display:block}
-    .grid{display:flex;flex-direction:column;align-items:center;gap:10px}
-    .kidBtn{background:#fff;border:1px solid var(--border);border-radius:14px;padding:16px 18px;font-size:20px;font-weight:700;color:#000;box-shadow:var(--shadow);cursor:pointer;width:95%;max-width:360px;text-align:center;transition:transform .08s ease, background .2s ease}
-    .kidBtn:active{transform:scale(0.98)}
-    .hidden{display:none}
+    *{ box-sizing:border-box; }
+    body{
+      margin:0;
+      padding:14px;
+      font-family:'SF Pro Display',system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      color:var(--txt);
+      background:var(--bg);
+    }
+    h1{
+      margin:6px 0 14px;
+      text-align:center;
+      font-size:22px;
+      font-weight:900;
+      color:var(--accent);
+    }
+    .card{
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      padding:12px;
+      margin-bottom:12px;
+    }
+    .row{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+    .spacer{ flex:1; }
+    .muted{ color:var(--muted); font-size:12px; font-weight:700; }
+    .pill{
+      padding:6px 10px;
+      border:1px solid var(--border);
+      border-radius:999px;
+      background:#fafafa;
+      font-size:12px;
+      font-weight:900;
+    }
+    input, select, textarea{
+      width:100%;
+      padding:12px 14px;
+      font-size:16px;
+      border:1px solid var(--border);
+      border-radius:14px;
+      background:#fff;
+      outline:none;
+    }
+    textarea{ min-height:100px; resize:vertical; }
+    button{
+      border:1px solid var(--border);
+      background:#fff;
+      border-radius:14px;
+      padding:12px 14px;
+      font-weight:900;
+      cursor:pointer;
+    }
+    button.primary{
+      background:var(--accent);
+      border-color:var(--accent);
+      color:#fff;
+    }
+    button:active{ transform:scale(.99); }
 
-    .toolbar{display:flex;align-items:center;gap:10px;margin-bottom:10px}
-    .back{background:#fff;border:1px solid var(--border);border-radius:12px;padding:10px 14px;font-weight:700;cursor:pointer}
-    .headerRow{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:6px}
-    .mouse{width:44px;height:44px;display:inline-block}
-    .subtitle{text-align:center;color:var(--muted);font-size:14px;margin-top:6px}
+    .list{ display:flex; flex-direction:column; gap:10px; margin-top:10px; }
+    .kid{
+      border:1px solid var(--border);
+      border-radius:16px;
+      background:#fff;
+      padding:12px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      cursor:pointer;
+    }
+    .kidLeft{ display:flex; flex-direction:column; gap:2px; }
+    .kidName{ font-weight:900; font-size:16px; }
+    .kidMeta{ font-size:12px; color:var(--muted); font-weight:800; }
 
-    .circles{display:grid;grid-template-columns:repeat(5, 1fr);gap:10px;max-width:380px;margin:16px auto 8px}
-    .dot{width:100%;aspect-ratio:1/1;border-radius:999px;border:2px solid var(--border);background:#fff;box-shadow:0 1px 3px rgba(0,0,0,0.04) inset}
-    .dot.filled{background:#111827;border-color:#111827}
-    .goalTitle{font-size:18px;font-weight:800;text-align:center;margin-top:10px}
+    .divider{ height:1px; background:var(--border); margin:12px 0; }
+
+    /* Overlay panel: mobile-first bottom sheet */
+    .overlay{
+      position:fixed;
+      inset:0;
+      background:rgba(0,0,0,.35);
+      display:none;
+      align-items:flex-end;
+      justify-content:center;
+      padding:10px;
+    }
+    .overlay.show{ display:flex; }
+    .panel{
+      width:100%;
+      max-width:760px;
+      background:#fff;
+      border-radius:20px;
+      border:1px solid var(--border);
+      box-shadow:0 24px 60px rgba(0,0,0,.28);
+      padding:12px;
+    }
+    .panelTitle{ font-weight:950; font-size:18px; }
+    .panelSub{ color:var(--muted); font-size:12px; font-weight:800; margin-top:2px; }
+
+    .circles{
+      display:grid;
+      grid-template-columns:repeat(10, 1fr);
+      gap:8px;
+      margin-top:10px;
+    }
+    .dot{
+      width:100%;
+      aspect-ratio:1/1;
+      border-radius:999px;
+      border:2px solid var(--border);
+      background:#fff;
+      cursor:pointer;
+      user-select:none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .dot.on{ background:var(--green); border-color:var(--green); }
+
+    .warn{
+      background:#fff7ed;
+      border:1px solid #fed7aa;
+      border-radius:14px;
+      padding:10px;
+      color:#9a3412;
+      font-size:12px;
+      font-weight:800;
+    }
+    .debug{
+      background:#0b1220;
+      color:#e5e7eb;
+      border-radius:14px;
+      padding:10px;
+      font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;
+      font-size:12px;
+      overflow:auto;
+      white-space:pre-wrap;
+    }
+
+    /* Slightly tighter on very small screens */
+    @media (max-width:380px){
+      button{ padding:10px 12px; }
+      input, select, textarea{ padding:10px 12px; }
+    }
   </style>
 </head>
+
 <body>
-  <h1>Zielkarte</h1>
+  <h1>Zielkarte – Admin</h1>
 
-  <!-- LISTE -->
-  <div id="listView" class="card">
-    <input id="search" class="search" placeholder="Suche nach Namen…" />
-    <div id="kidList" class="grid"></div>
-  </div>
-
-  <!-- DETAIL -->
-  <div id="detailView" class="card hidden">
-    <div class="toolbar">
-      <button id="backBtn" class="back">🏠 Zurück</button>
-      <div style="flex:1"></div>
+  <!-- GOALS EDITOR -->
+  <div class="card">
+    <div class="row">
+      <div>
+        <div style="font-weight:950;">Ziele</div>
+        <div class="muted">Speicherort: <b>/ziele/meta</b> (Array). 1 Zeile = 1 Ziel.</div>
+      </div>
+      <div class="spacer"></div>
+      <button id="btnDefaults">Standardziele</button>
+      <button id="btnSaveGoals" class="primary">Ziele speichern</button>
     </div>
 
-    <div class="headerRow">
-      <!-- Maus-Icon (SVG, ohne externe Datei) -->
-      <svg class="mouse" viewBox="0 0 64 64" aria-hidden="true">
-        <circle cx="20" cy="18" r="10" fill="#111827"/>
-        <circle cx="44" cy="18" r="10" fill="#111827"/>
-        <ellipse cx="32" cy="36" rx="18" ry="16" fill="#111827"/>
-        <circle cx="26" cy="34" r="3" fill="#fff"/>
-        <circle cx="38" cy="34" r="3" fill="#fff"/>
-        <circle cx="26" cy="34" r="1.5" fill="#111827"/>
-        <circle cx="38" cy="34" r="1.5" fill="#111827"/>
-        <ellipse cx="32" cy="42" rx="6" ry="4" fill="#fff"/>
-      </svg>
-      <div>
-        <div style="font-size:18px;font-weight:800;line-height:1">Deine Zielkarte</div>
-        <div id="kidName" class="subtitle"></div>
+    <div style="margin-top:10px">
+      <textarea id="goalsTextarea" placeholder="Ziele hier eintragen …"></textarea>
+      <div id="goalsInfo" class="muted" style="margin-top:8px">—</div>
+    </div>
+  </div>
+
+  <!-- KIDS LIST -->
+  <div class="card">
+    <div class="row">
+      <input id="search" placeholder="Suche nach Namen …">
+    </div>
+
+    <div class="row" style="margin-top:10px">
+      <span id="pillKids" class="pill">Kinder: —</span>
+      <span id="pillGoals" class="pill">Ziele: —</span>
+      <span id="pillWeek" class="pill">Woche: —</span>
+      <div class="spacer"></div>
+    </div>
+
+    <div class="row" style="margin-top:10px">
+      <input id="newKidName" placeholder="Neues Kind (Name)">
+      <button id="btnAddKid" class="primary">+ Kind</button>
+    </div>
+
+    <div id="kidsEmpty" class="warn" style="display:none; margin-top:10px">
+      Keine Kinder unter <b>/kinder</b> gefunden. Du kannst oben ein Kind anlegen.
+    </div>
+
+    <div id="kidList" class="list"></div>
+
+    <div class="divider"></div>
+    <div class="muted">Debug (hilft, wenn nichts lädt):</div>
+    <div id="debug" class="debug" style="margin-top:6px">—</div>
+  </div>
+
+  <!-- DETAIL OVERLAY -->
+  <div id="overlay" class="overlay" aria-hidden="true">
+    <div class="panel">
+      <div class="row">
+        <div>
+          <div id="detailName" class="panelTitle">—</div>
+          <div id="detailMeta" class="panelSub">—</div>
+        </div>
+        <div class="spacer"></div>
+        <button id="btnClose">Schließen</button>
+      </div>
+
+      <div class="divider"></div>
+
+      <div style="font-weight:950;">Aktuelles Ziel</div>
+      <select id="goalSelect" style="margin-top:8px"></select>
+      <div class="row" style="margin-top:10px">
+        <button id="btnSetGoal" class="primary">Ziel setzen</button>
+        <span class="muted">Setzt Stempel auf 0 und leert die Notiz.</span>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="row">
+        <div style="font-weight:950;">Stempelkarte</div>
+        <div class="spacer"></div>
+        <span id="stampsPill" class="pill">Stempel: —/10</span>
+      </div>
+      <div class="muted">Tippe Kreis #n, um den Stand direkt zu setzen.</div>
+      <div id="circles" class="circles"></div>
+      <div class="row" style="margin-top:10px">
+        <button id="btnMinus">−</button>
+        <button id="btnPlus">+</button>
+        <button id="btnSaveStamps" class="primary">Stempel speichern</button>
+      </div>
+
+      <div class="divider"></div>
+
+      <div style="font-weight:950;">Notiz (nur diese Woche)</div>
+      <div class="muted">Freitext. Wird beim Wochenwechsel automatisch geleert, sobald du dieses Kind im Admin öffnest.</div>
+      <textarea id="note" style="margin-top:8px" placeholder="Kurze Notiz …"></textarea>
+      <div class="row" style="margin-top:10px">
+        <button id="btnSaveNote" class="primary">Notiz speichern</button>
+        <button id="btnClearNote">Leeren</button>
       </div>
     </div>
-
-    <div id="circles" class="circles" aria-label="Stempelkarte"></div>
-    <div id="goalTitle" class="goalTitle">—</div>
   </div>
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
-import { getDatabase, ref, get, onValue } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-database.js";
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
+    import { getDatabase, ref, get, set, update, onValue } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-database.js";
 
-/* Firebase (punkte-45c20) */
-const app = initializeApp({
-  apiKey: "AIzaSyAdPN2duh89Fx5rmYlFshdf0juhYNX_7fg",
-  authDomain: "punkte-45c20.firebaseapp.com",
-  databaseURL: "https://punkte-45c20-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId: "punkte-45c20",
-  storageBucket: "punkte-45c20.appspot.com",
-  messagingSenderId: "931713539549",
-  appId: "1:931713539549:web:e348bf38369639f1906a34"
-});
-const db = getDatabase(app);
-
-/* DOM */
-const listView = document.getElementById('listView');
-const detailView = document.getElementById('detailView');
-const kidList = document.getElementById('kidList');
-const search = document.getElementById('search');
-const backBtn = document.getElementById('backBtn');
-const kidNameEl = document.getElementById('kidName');
-const circlesEl = document.getElementById('circles');
-const goalTitleEl = document.getElementById('goalTitle');
-
-/* State */
-let GOALS = [];
-let KIDS = [];
-
-/* Ziele laden */
-async function loadGoals(){
-  const s = await get(ref(db,"ziele/meta"));
-  const val = s.exists() ? s.val() : null;
-
-  if (Array.isArray(val)) {
-    GOALS = val.filter(x => x && String(x).trim() !== "");
-  } else {
-    GOALS = [];
-  }
-
-  if (GOALS.length === 0) {
-    GOALS = ["—"];
-  }
-}
-
-/* Kinder live laden (nur mit farbe) */
-onValue(ref(db,"kinder"), async (snap)=>{
-  await loadGoals();
-  KIDS = [];
-  snap.forEach(ch=>{
-    const v = ch.val()||{};
-    if (v.farbe === undefined) return; // euer Filter
-    KIDS.push({
-      name: ch.key,
-      activeGoalIndex: clampIndex(v.activeGoalIndex ?? 0),
-      stamps: clampStamps(v.stamps ?? 0)
+    // --- Firebase (aus deinem ursprünglichen Code, RTDB) ---
+    const app = initializeApp({
+      apiKey: "AIzaSyAdPN2duh89Fx5rmYlFshdf0juhYNX_7fg",
+      authDomain: "punkte-45c20.firebaseapp.com",
+      databaseURL: "https://punkte-45c20-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId: "punkte-45c20",
+      storageBucket: "punkte-45c20.appspot.com",
+      messagingSenderId: "931713539549",
+      appId: "1:931713539549:web:e348bf38369639f1906a34"
     });
-  });
-  KIDS.sort((a,b)=>a.name.localeCompare(b.name,'de'));
-  renderList();
-});
+    const db = getDatabase(app);
 
-/* Liste rendern */
-function renderList(){
-  const q = (search.value||"").toLowerCase();
-  kidList.innerHTML = "";
-  KIDS.filter(k=>k.name.toLowerCase().includes(q)).forEach(k=>{
-    const btn = document.createElement('button');
-    btn.className = 'kidBtn';
-    btn.textContent = k.name;
-    btn.onclick = ()=>openDetail(k.name);
-    kidList.appendChild(btn);
-  });
-}
-search.addEventListener('input', renderList);
+    // --- DOM ---
+    const goalsTextarea = document.getElementById("goalsTextarea");
+    const goalsInfo = document.getElementById("goalsInfo");
+    const btnDefaults = document.getElementById("btnDefaults");
+    const btnSaveGoals = document.getElementById("btnSaveGoals");
 
-/* Detail öffnen */
-async function openDetail(name){
-  const s = await get(ref(db,`kinder/${name}`));
-  if (!s.exists()) return;
-  const v = s.val()||{};
-  if (v.farbe === undefined) return;
+    const search = document.getElementById("search");
+    const newKidName = document.getElementById("newKidName");
+    const btnAddKid = document.getElementById("btnAddKid");
+    const kidsEmpty = document.getElementById("kidsEmpty");
+    const kidList = document.getElementById("kidList");
 
-  toggleViews(false);
+    const pillKids = document.getElementById("pillKids");
+    const pillGoals = document.getElementById("pillGoals");
+    const pillWeek = document.getElementById("pillWeek");
 
-  const idx = clampIndex(v.activeGoalIndex ?? 0);
-  const stamps = clampStamps(v.stamps ?? 0);
+    const debugEl = document.getElementById("debug");
 
-  kidNameEl.textContent = name;
-  goalTitleEl.textContent = GOALS[idx] || "—";
-  renderCircles(stamps);
-}
+    const overlay = document.getElementById("overlay");
+    const btnClose = document.getElementById("btnClose");
+    const detailName = document.getElementById("detailName");
+    const detailMeta = document.getElementById("detailMeta");
 
-function renderCircles(stamps){
-  circlesEl.innerHTML = "";
-  for (let i=0;i<10;i++){
-    const dot = document.createElement('div');
-    dot.className = 'dot' + (i < stamps ? ' filled' : '');
-    circlesEl.appendChild(dot);
-  }
-}
+    const goalSelect = document.getElementById("goalSelect");
+    const btnSetGoal = document.getElementById("btnSetGoal");
 
-/* Navigation */
-backBtn.onclick = ()=>toggleViews(true);
-function toggleViews(showList){
-  listView.classList.toggle('hidden', !showList);
-  detailView.classList.toggle('hidden', showList);
-}
+    const circlesEl = document.getElementById("circles");
+    const stampsPill = document.getElementById("stampsPill");
+    const btnMinus = document.getElementById("btnMinus");
+    const btnPlus = document.getElementById("btnPlus");
+    const btnSaveStamps = document.getElementById("btnSaveStamps");
 
-/* Utils */
-function clampStamps(x){ x = Number(x)||0; return Math.max(0, Math.min(10, Math.floor(x))); }
-function clampIndex(i){ i = Number(i)||0; return Math.max(0, Math.min((GOALS.length?GOALS.length:1)-1, Math.floor(i))); }
-</script>
+    const noteEl = document.getElementById("note");
+    const btnSaveNote = document.getElementById("btnSaveNote");
+    const btnClearNote = document.getElementById("btnClearNote");
+
+    // --- State ---
+    let GOALS = [];
+    let KIDS = []; // [{name, activeGoalIndex, stamps, noteText, noteWeek}]
+    let currentKidName = null;
+    let currentKidData = null;
+    let draftStamps = 0;
+
+    // --- Utils ---
+    const clampStamps = (x) => Math.max(0, Math.min(10, Math.floor(Number(x) || 0)));
+    const clampIndex = (i, len) => {
+      const n = Math.floor(Number(i) || 0);
+      if (len <= 0) return 0;
+      return Math.max(0, Math.min(len - 1, n));
+    };
+    const escapeHtml = (s) => String(s).replace(/[&<>"']/g, m => ({
+      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+    }[m]));
+
+    // ISO week string "YYYY-Www"
+    function isoWeekString(date = new Date()){
+      const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+      const dayNum = d.getUTCDay() || 7;
+      d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+      const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+      const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+      return `${d.getUTCFullYear()}-W${String(weekNo).padStart(2,"0")}`;
+    }
+    const CURRENT_WEEK = isoWeekString();
+    pillWeek.textContent = `Woche: ${CURRENT_WEEK}`;
+
+    // --- Goals ---
+    async function readGoalsOnce(){
+      const snap = await get(ref(db, "ziele/meta"));
+      const val = snap.exists() ? snap.val() : null;
+      if (Array.isArray(val)) {
+        GOALS = val.map(x => String(x || "").trim()).filter(Boolean);
+      } else {
+        GOALS = [];
+      }
+      goalsTextarea.value = GOALS.join("\n");
+      goalsInfo.textContent = GOALS.length ? `${GOALS.length} Ziele geladen.` : "Keine Ziele vorhanden. Trage Ziele ein und speichere.";
+      pillGoals.textContent = `Ziele: ${GOALS.length}`;
+      renderGoalSelectOptions();
+    }
+
+    function parseGoalsFromTextarea(){
+      return goalsTextarea.value
+        .split("\n")
+        .map(x => x.trim())
+        .filter(Boolean);
+    }
+
+    btnSaveGoals.addEventListener("click", async () => {
+      const arr = parseGoalsFromTextarea();
+      await set(ref(db, "ziele/meta"), arr);
+      GOALS = arr;
+      goalsInfo.textContent = `Gespeichert: ${GOALS.length} Ziele.`;
+      pillGoals.textContent = `Ziele: ${GOALS.length}`;
+      renderGoalSelectOptions();
+      // Refresh list to show goal text in meta if desired
+      renderKidList();
+    });
+
+    btnDefaults.addEventListener("click", () => {
+      const defaults = [
+        "Ich bin freundlich zu anderen.",
+        "Ich melde mich, bevor ich spreche.",
+        "Ich rede in angemessener Lautstärke.",
+        "Ich höre anderen zu und lasse sie ausreden.",
+        "Ich rufe nicht rein.",
+        "Ich bleibe an meinem Platz sitzen.",
+        "Ich spiele nicht mit dem Essen.",
+        "Ich räume meine Sachen weg.",
+        "Ich gehe langsam durch den Flur.",
+        "Ich hole mir Hilfe, wenn ich alleine nicht weiterkomme.",
+        "Ich plane meine Zeit eigenständig (Hausaufgaben, Spielen, Essen).",
+        "Ich teile Dinge (Materialien, Spielzeug).",
+        "Ich suche mir andere Kinder zum Spielen.",
+        "Ich helfe anderen, wenn sie Unterstützung brauchen.",
+        "Ich kommentiere andere Kinder nicht und kümmere mich um meine eigenen Aufgaben.",
+        "Ich löse Streit mit Worten.",
+        "Ich akzeptiere Anweisungen ohne Diskussion.",
+        "Ich hänge meine Jacke richtig auf und stelle meine Schuhe an den Rand."
+      ];
+      goalsTextarea.value = defaults.join("\n");
+      goalsInfo.textContent = "Standardziele eingefügt (noch nicht gespeichert).";
+    });
+
+    function renderGoalSelectOptions(){
+      goalSelect.innerHTML = "";
+      if (!GOALS.length) {
+        const opt = document.createElement("option");
+        opt.value = "0";
+        opt.textContent = "— Keine Ziele —";
+        goalSelect.appendChild(opt);
+        goalSelect.disabled = true;
+        btnSetGoal.disabled = true;
+        btnSetGoal.classList.remove("primary");
+        return;
+      }
+      goalSelect.disabled = false;
+      btnSetGoal.disabled = false;
+      btnSetGoal.classList.add("primary");
+
+      GOALS.forEach((g, idx) => {
+        const opt = document.createElement("option");
+        opt.value = String(idx);
+        opt.textContent = `Ziel ${idx + 1}: ${g}`;
+        goalSelect.appendChild(opt);
+      });
+
+      // If a kid is open, align selection
+      if (currentKidData) {
+        const i = clampIndex(currentKidData.activeGoalIndex ?? 0, GOALS.length);
+        goalSelect.value = String(i);
+      }
+    }
+
+    // --- Kids list ---
+    function renderKidList(){
+      const q = (search.value || "").toLowerCase();
+      const filtered = KIDS
+        .filter(k => k.name.toLowerCase().includes(q))
+        .sort((a,b)=>a.name.localeCompare(b.name,'de'));
+
+      kidList.innerHTML = "";
+
+      if (!filtered.length) {
+        kidsEmpty.style.display = KIDS.length ? "none" : "block";
+        if (KIDS.length) {
+          // just no match for search
+          const div = document.createElement("div");
+          div.className = "warn";
+          div.textContent = "Keine Treffer für die Suche.";
+          kidList.appendChild(div);
+        }
+        return;
+      }
+      kidsEmpty.style.display = "none";
+
+      for (const k of filtered) {
+        const idx = clampIndex(k.activeGoalIndex ?? 0, GOALS.length);
+        const goalTxt = GOALS.length ? (GOALS[idx] || "—") : "— keine Ziele —";
+        const stamps = clampStamps(k.stamps ?? 0);
+
+        const el = document.createElement("div");
+        el.className = "kid";
+        el.innerHTML = `
+          <div class="kidLeft">
+            <div class="kidName">${escapeHtml(k.name)}</div>
+            <div class="kidMeta">${stamps}/10 • ${escapeHtml(goalTxt)}</div>
+          </div>
+          <div class="kidMeta">›</div>
+        `;
+        el.addEventListener("click", () => openKid(k.name));
+        kidList.appendChild(el);
+      }
+    }
+
+    search.addEventListener("input", renderKidList);
+
+    btnAddKid.addEventListener("click", async () => {
+      const name = (newKidName.value || "").trim();
+      if (!name) return;
+
+      // Create minimal kid record
+      const kidRef = ref(db, `kinder/${name}`);
+      const snap = await get(kidRef);
+
+      if (snap.exists()) {
+        alert("Dieses Kind existiert bereits.");
+        return;
+      }
+
+      await set(kidRef, {
+        activeGoalIndex: 0,
+        stamps: 0,
+        noteText: "",
+        noteWeek: CURRENT_WEEK
+      });
+
+      newKidName.value = "";
+    });
+
+    // --- Overlay controls ---
+    function showOverlay(){
+      overlay.classList.add("show");
+      overlay.setAttribute("aria-hidden", "false");
+    }
+    function hideOverlay(){
+      overlay.classList.remove("show");
+      overlay.setAttribute("aria-hidden", "true");
+      currentKidName = null;
+      currentKidData = null;
+    }
+    btnClose.addEventListener("click", hideOverlay);
+    overlay.addEventListener("click", (e) => {
+      if (e.target === overlay) hideOverlay();
+    });
+
+    // --- Notiz Wochenwechsel: Reset beim Öffnen im Admin ---
+    async function ensureNoteIsCurrentWeek(name, v){
+      const storedWeek = (v.noteWeek || "").trim();
+      if (storedWeek === CURRENT_WEEK) return v;
+
+      // Reset note for new week
+      const patch = { noteText: "", noteWeek: CURRENT_WEEK };
+      await update(ref(db, `kinder/${name}`), patch);
+      return { ...v, ...patch };
+    }
+
+    // --- Open kid ---
+    async function openKid(name){
+      const snap = await get(ref(db, `kinder/${name}`));
+      if (!snap.exists()) return;
+
+      let v = snap.val() || {};
+      v = await ensureNoteIsCurrentWeek(name, v);
+
+      currentKidName = name;
+      currentKidData = v;
+
+      detailName.textContent = name;
+
+      // Compute goal label
+      const idx = clampIndex(v.activeGoalIndex ?? 0, GOALS.length);
+      const goalTxt = GOALS.length ? (GOALS[idx] || "—") : "— keine Ziele —";
+      detailMeta.textContent = `${clampStamps(v.stamps ?? 0)}/10 • ${CURRENT_WEEK} • ${goalTxt}`;
+
+      // Set select
+      renderGoalSelectOptions();
+      if (GOALS.length) goalSelect.value = String(idx);
+
+      // Stamps
+      draftStamps = clampStamps(v.stamps ?? 0);
+      renderCircles(draftStamps);
+      stampsPill.textContent = `Stempel: ${draftStamps}/10`;
+
+      // Note
+      noteEl.value = v.noteText || "";
+
+      showOverlay();
+    }
+
+    // --- Circles rendering ---
+    function renderCircles(stamps){
+      circlesEl.innerHTML = "";
+      for (let i = 1; i <= 10; i++){
+        const dot = document.createElement("div");
+        dot.className = "dot" + (i <= stamps ? " on" : "");
+        dot.title = `Setze auf ${i}`;
+        dot.addEventListener("click", () => {
+          draftStamps = i;
+          stampsPill.textContent = `Stempel: ${draftStamps}/10`;
+          renderCircles(draftStamps);
+        });
+        circlesEl.appendChild(dot);
+      }
+    }
+
+    btnMinus.addEventListener("click", () => {
+      if (!currentKidName) return;
+      draftStamps = clampStamps(draftStamps - 1);
+      stampsPill.textContent = `Stempel: ${draftStamps}/10`;
+      renderCircles(draftStamps);
+    });
+
+    btnPlus.addEventListener("click", () => {
+      if (!currentKidName) return;
+      draftStamps = clampStamps(draftStamps + 1);
+      stampsPill.textContent = `Stempel: ${draftStamps}/10`;
+      renderCircles(draftStamps);
+    });
+
+    btnSaveStamps.addEventListener("click", async () => {
+      if (!currentKidName) return;
+      await update(ref(db, `kinder/${currentKidName}`), { stamps: draftStamps });
+      // refresh meta line
+      const idx = clampIndex(currentKidData?.activeGoalIndex ?? 0, GOALS.length);
+      const goalTxt = GOALS.length ? (GOALS[idx] || "—") : "— keine Ziele —";
+      detailMeta.textContent = `${draftStamps}/10 • ${CURRENT_WEEK} • ${goalTxt}`;
+    });
+
+    // --- Set goal (resets stamps + note) ---
+    btnSetGoal.addEventListener("click", async () => {
+      if (!currentKidName) return;
+
+      if (!GOALS.length) {
+        alert("Es sind keine Ziele vorhanden. Bitte zuerst Ziele speichern.");
+        return;
+      }
+
+      const idx = clampIndex(goalSelect.value, GOALS.length);
+
+      await update(ref(db, `kinder/${currentKidName}`), {
+        activeGoalIndex: idx,
+        stamps: 0,
+        noteText: "",
+        noteWeek: CURRENT_WEEK
+      });
+
+      // update local UI
+      currentKidData = { ...(currentKidData||{}), activeGoalIndex: idx, stamps: 0, noteText: "", noteWeek: CURRENT_WEEK };
+      draftStamps = 0;
+      noteEl.value = "";
+      renderCircles(0);
+      stampsPill.textContent = "Stempel: 0/10";
+      detailMeta.textContent = `0/10 • ${CURRENT_WEEK} • ${GOALS[idx] || "—"}`;
+    });
+
+    // --- Note save/clear ---
+    btnSaveNote.addEventListener("click", async () => {
+      if (!currentKidName) return;
+      const text = (noteEl.value || "").trim();
+      await update(ref(db, `kinder/${currentKidName}`), { noteText: text, noteWeek: CURRENT_WEEK });
+      if (currentKidData) currentKidData.noteText = text;
+    });
+
+    btnClearNote.addEventListener("click", async () => {
+      noteEl.value = "";
+      if (!currentKidName) return;
+      await update(ref(db, `kinder/${currentKidName}`), { noteText: "", noteWeek: CURRENT_WEEK });
+      if (currentKidData) currentKidData.noteText = "";
+    });
+
+    // --- Live subscriptions ---
+    onValue(ref(db, "kinder"), (snap) => {
+      const raw = [];
+      if (snap.exists()) {
+        snap.forEach(ch => {
+          const v = ch.val() || {};
+          raw.push({
+            name: ch.key,
+            activeGoalIndex: v.activeGoalIndex ?? 0,
+            stamps: v.stamps ?? 0,
+            noteText: v.noteText ?? "",
+            noteWeek: v.noteWeek ?? ""
+          });
+        });
+      }
+      KIDS = raw;
+      pillKids.textContent = `Kinder: ${KIDS.length}`;
+      renderKidList();
+
+      // keep debug helpful
+      debugEl.textContent =
+        `RTDB connected: yes\n` +
+        `path /kinder: ${KIDS.length} records\n` +
+        `path /ziele/meta: ${GOALS.length} goals\n` +
+        `week: ${CURRENT_WEEK}\n` +
+        `note-reset: on openKid if noteWeek != currentWeek\n` +
+        `last update: ${new Date().toLocaleString('de-DE')}`;
+    }, (err) => {
+      debugEl.textContent = `RTDB error:\n${err?.message || String(err)}`;
+    });
+
+    // Initial reads
+    (async function init(){
+      try{
+        await readGoalsOnce();
+        debugEl.textContent =
+          `RTDB connected: yes\n` +
+          `path /kinder: loading...\n` +
+          `path /ziele/meta: ${GOALS.length} goals\n` +
+          `week: ${CURRENT_WEEK}\n` +
+          `last update: ${new Date().toLocaleString('de-DE')}`;
+      } catch (e){
+        debugEl.textContent = `Init error:\n${e?.message || String(e)}`;
+      }
+    })();
+  </script>
 </body>
 </html>
