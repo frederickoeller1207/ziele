@@ -1,78 +1,100 @@
-<!-- index.html (Kinderansicht) -->
+<!-- admin.html (Adminansicht) -->
 <!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Zielkarte</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Zielkarte – Admin</title>
   <link href="https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@400;600&display=swap" rel="stylesheet">
   <style>
-    :root{
-      --bg:#f9f9fb; --card:#ffffff; --txt:#1c1c1e; --muted:#6b7280;
-      --border:#e5e5ea; --radius:14px; --shadow:0 2px 8px rgba(0,0,0,0.06);
-    }
-    body{font-family:'SF Pro Display',system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--txt);margin:0;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:16px}
-    h1{margin:12px 0 14px;font-size:26px;font-weight:700;text-align:center}
-    .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;width:95%;max-width:720px}
-    .search{width:100%;max-width:340px;font-size:16px;padding:12px;margin:0 auto 12px;border:1px solid var(--border);border-radius:12px;display:block}
-    .grid{display:flex;flex-direction:column;align-items:center;gap:10px}
-    .kidBtn{background:#fff;border:1px solid var(--border);border-radius:14px;padding:16px 18px;font-size:20px;font-weight:700;color:#000;box-shadow:var(--shadow);cursor:pointer;width:95%;max-width:360px;text-align:center;transition:transform .08s ease, background .2s ease}
-    .kidBtn:active{transform:scale(0.98)}
-    .hidden{display:none}
+    :root{--bg:#f4f4f6;--card:#fff;--txt:#111827;--muted:#6b7280;--border:#e5e7eb;--accent:#007aff;--rad:14px;--shadow:0 4px 12px rgba(0,0,0,.08)}
+    body{font-family:'SF Pro Display',system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--txt);margin:0;padding:16px}
+    h1{font-size:22px;margin:0 0 16px;text-align:center;color:var(--accent);font-weight:800}
+    .grid{display:grid;grid-template-columns:340px 1fr;gap:16px;align-items:start}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:var(--rad);box-shadow:var(--shadow);padding:14px}
+    .section-title{font-weight:800;margin:0 0 10px}
+    .muted{color:var(--muted);font-size:12px}
+    .search{width:100%;padding:10px;border:1px solid var(--border);border-radius:12px}
+    .list{display:flex;flex-direction:column;gap:8px;margin-top:10px;max-height:72vh;overflow:auto}
+    .kid{display:flex;justify-content:space-between;align-items:center;padding:10px;border:1px solid var(--border);border-radius:12px;background:#fff;cursor:pointer}
+    .kid:hover{background:#f9fafb}
+    .pill{padding:6px 10px;border:1px solid var(--border);border-radius:999px;background:#fafafa;font-size:12px}
+    .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    .select,.input,.textarea{padding:10px;border:1px solid var(--border);border-radius:12px;background:#fff;width:100%}
+    .textarea{min-height:84px;resize:vertical}
+    .btn{background:#fff;border:1px solid var(--border);border-radius:12px;padding:10px 14px;cursor:pointer;font-weight:800}
+    .btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+    .btn:active{transform:scale(0.99)}
+    .divider{height:1px;background:var(--border);margin:12px 0}
 
-    .toolbar{display:flex;align-items:center;gap:10px;margin-bottom:10px}
-    .back{background:#fff;border:1px solid var(--border);border-radius:12px;padding:10px 14px;font-weight:700;cursor:pointer}
-    .headerRow{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:6px}
-    .mouse{width:44px;height:44px;display:inline-block}
-    .subtitle{text-align:center;color:var(--muted);font-size:14px;margin-top:6px}
-
-    .circles{display:grid;grid-template-columns:repeat(5, 1fr);gap:10px;max-width:380px;margin:16px auto 8px}
-    .dot{width:100%;aspect-ratio:1/1;border-radius:999px;border:2px solid var(--border);background:#fff;box-shadow:0 1px 3px rgba(0,0,0,0.04) inset}
-    .dot.filled{background:#111827;border-color:#111827}
-    .goalTitle{font-size:18px;font-weight:800;text-align:center;margin-top:10px}
+    .circles{display:grid;grid-template-columns:repeat(10, 1fr);gap:8px;margin-top:12px}
+    .dot{width:100%;aspect-ratio:1/1;border-radius:999px;border:2px solid var(--border);background:#fff;cursor:pointer}
+    .dot.on{background:#22c55e;border-color:#22c55e}
+    .dotLabel{display:flex;justify-content:space-between;align-items:center;margin-top:6px}
+    .warn{background:#fff7ed;border:1px solid #fed7aa;padding:10px;border-radius:12px}
   </style>
 </head>
 <body>
-  <h1>Zielkarte</h1>
+<h1>Zielkarte – Admin</h1>
 
-  <!-- LISTE -->
-  <div id="listView" class="card">
-    <input id="search" class="search" placeholder="Suche nach Namen…" />
-    <div id="kidList" class="grid"></div>
+<div class="grid">
+  <!-- Kinder -->
+  <div class="card">
+    <div class="section-title">Kinder (nur mit Farbe)</div>
+    <input id="search" class="search" placeholder="Suche nach Namen…">
+    <div id="kidList" class="list"></div>
   </div>
 
-  <!-- DETAIL -->
-  <div id="detailView" class="card hidden">
-    <div class="toolbar">
-      <button id="backBtn" class="back">🏠 Zurück</button>
+  <!-- Details -->
+  <div class="card">
+    <div class="section-title">Ausgewähltes Kind</div>
+    <div class="row">
+      <div id="kidName" class="pill">—</div>
+      <div id="weekTag" class="pill">Woche —</div>
       <div style="flex:1"></div>
+      <div id="stampsTag" class="pill">Stempel: —/10</div>
     </div>
 
-    <div class="headerRow">
-      <!-- Maus-Icon (SVG, ohne externe Datei) -->
-      <svg class="mouse" viewBox="0 0 64 64" aria-hidden="true">
-        <circle cx="20" cy="18" r="10" fill="#111827"/>
-        <circle cx="44" cy="18" r="10" fill="#111827"/>
-        <ellipse cx="32" cy="36" rx="18" ry="16" fill="#111827"/>
-        <circle cx="26" cy="34" r="3" fill="#fff"/>
-        <circle cx="38" cy="34" r="3" fill="#fff"/>
-        <circle cx="26" cy="34" r="1.5" fill="#111827"/>
-        <circle cx="38" cy="34" r="1.5" fill="#111827"/>
-        <ellipse cx="32" cy="42" rx="6" ry="4" fill="#fff"/>
-      </svg>
-      <div>
-        <div style="font-size:18px;font-weight:800;line-height:1">Deine Zielkarte</div>
-        <div id="kidName" class="subtitle"></div>
+    <div class="divider"></div>
+
+    <div class="section-title">Aktuelles Ziel</div>
+    <select id="goalSelect" class="select"></select>
+    <div class="row" style="margin-top:10px">
+      <button id="setGoalBtn" class="btn primary">Ziel setzen</button>
+      <span class="muted">Setzt Stempel zurück auf 0.</span>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="section-title">Stempelkarte</div>
+    <div class="muted">Klicke Kreise, um den Stand zu setzen (0–10).</div>
+    <div id="circles" class="circles" aria-label="Stempelkarte"></div>
+    <div class="dotLabel">
+      <div class="muted">Klick auf Kreis #n → setzt Stempel auf n</div>
+      <div class="row">
+        <button id="minus" class="btn">−</button>
+        <button id="plus" class="btn">+</button>
+        <button id="saveStamps" class="btn primary">Speichern</button>
       </div>
     </div>
 
-    <div id="circles" class="circles" aria-label="Stempelkarte"></div>
-    <div id="goalTitle" class="goalTitle">—</div>
+    <div class="divider"></div>
+
+    <div class="section-title">Notiz (nur diese Woche)</div>
+    <div class="warn muted" style="margin-bottom:10px">
+      Die Notiz wird automatisch geleert, sobald eine neue Kalenderwoche beginnt (beim Öffnen im Admin).
+    </div>
+    <textarea id="note" class="textarea" placeholder="Kurze Notiz…"></textarea>
+    <div class="row" style="margin-top:10px">
+      <button id="saveNote" class="btn primary">Notiz speichern</button>
+      <button id="clearNote" class="btn">Notiz leeren</button>
+    </div>
   </div>
+</div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
-import { getDatabase, ref, get, onValue } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-database.js";
+import { getDatabase, ref, get, onValue, update, set } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-database.js";
 
 /* Firebase (punkte-45c20) */
 const app = initializeApp({
@@ -87,102 +109,50 @@ const app = initializeApp({
 const db = getDatabase(app);
 
 /* DOM */
-const listView = document.getElementById('listView');
-const detailView = document.getElementById('detailView');
-const kidList = document.getElementById('kidList');
 const search = document.getElementById('search');
-const backBtn = document.getElementById('backBtn');
+const kidList = document.getElementById('kidList');
 const kidNameEl = document.getElementById('kidName');
+const weekTagEl = document.getElementById('weekTag');
+const stampsTagEl = document.getElementById('stampsTag');
+
+const goalSelect = document.getElementById('goalSelect');
+const setGoalBtn = document.getElementById('setGoalBtn');
+
 const circlesEl = document.getElementById('circles');
-const goalTitleEl = document.getElementById('goalTitle');
+const minusBtn = document.getElementById('minus');
+const plusBtn = document.getElementById('plus');
+const saveStampsBtn = document.getElementById('saveStamps');
+
+const noteEl = document.getElementById('note');
+const saveNoteBtn = document.getElementById('saveNote');
+const clearNoteBtn = document.getElementById('clearNote');
 
 /* State */
 let GOALS = [];
 let KIDS = [];
+let currentKidName = null;
+let draftStamps = 0;
+
+/* Week helpers (ISO week) */
+function isoWeekString(d=new Date()){
+  // ISO week date weeks start on Monday
+  const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const dayNum = date.getUTCDay() || 7;
+  date.setUTCDate(date.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(date.getUTCFullYear(),0,1));
+  const weekNo = Math.ceil((((date - yearStart) / 86400000) + 1) / 7);
+  const year = date.getUTCFullYear();
+  return `${year}-W${String(weekNo).padStart(2,'0')}`;
+}
+const CURRENT_WEEK = isoWeekString();
+weekTagEl.textContent = `Woche ${CURRENT_WEEK}`;
+
+/* Utils */
+const clampStamps = x => Math.max(0, Math.min(10, Math.floor(Number(x)||0)));
+const clampIndex = i => Math.max(0, Math.min((GOALS.length?GOALS.length:1)-1, Math.floor(Number(i)||0)));
 
 /* Ziele laden */
 async function loadGoals(){
   const s = await get(ref(db,"ziele/meta"));
   const val = s.exists() ? s.val() : null;
-
-  if (Array.isArray(val)) {
-    GOALS = val.filter(x => x && String(x).trim() !== "");
-  } else {
-    GOALS = [];
-  }
-
-  if (GOALS.length === 0) {
-    GOALS = ["—"];
-  }
-}
-
-/* Kinder live laden (nur mit farbe) */
-onValue(ref(db,"kinder"), async (snap)=>{
-  await loadGoals();
-  KIDS = [];
-  snap.forEach(ch=>{
-    const v = ch.val()||{};
-    if (v.farbe === undefined) return; // euer Filter
-    KIDS.push({
-      name: ch.key,
-      activeGoalIndex: clampIndex(v.activeGoalIndex ?? 0),
-      stamps: clampStamps(v.stamps ?? 0)
-    });
-  });
-  KIDS.sort((a,b)=>a.name.localeCompare(b.name,'de'));
-  renderList();
-});
-
-/* Liste rendern */
-function renderList(){
-  const q = (search.value||"").toLowerCase();
-  kidList.innerHTML = "";
-  KIDS.filter(k=>k.name.toLowerCase().includes(q)).forEach(k=>{
-    const btn = document.createElement('button');
-    btn.className = 'kidBtn';
-    btn.textContent = k.name;
-    btn.onclick = ()=>openDetail(k.name);
-    kidList.appendChild(btn);
-  });
-}
-search.addEventListener('input', renderList);
-
-/* Detail öffnen */
-async function openDetail(name){
-  const s = await get(ref(db,`kinder/${name}`));
-  if (!s.exists()) return;
-  const v = s.val()||{};
-  if (v.farbe === undefined) return;
-
-  toggleViews(false);
-
-  const idx = clampIndex(v.activeGoalIndex ?? 0);
-  const stamps = clampStamps(v.stamps ?? 0);
-
-  kidNameEl.textContent = name;
-  goalTitleEl.textContent = GOALS[idx] || "—";
-  renderCircles(stamps);
-}
-
-function renderCircles(stamps){
-  circlesEl.innerHTML = "";
-  for (let i=0;i<10;i++){
-    const dot = document.createElement('div');
-    dot.className = 'dot' + (i < stamps ? ' filled' : '');
-    circlesEl.appendChild(dot);
-  }
-}
-
-/* Navigation */
-backBtn.onclick = ()=>toggleViews(true);
-function toggleViews(showList){
-  listView.classList.toggle('hidden', !showList);
-  detailView.classList.toggle('hidden', showList);
-}
-
-/* Utils */
-function clampStamps(x){ x = Number(x)||0; return Math.max(0, Math.min(10, Math.floor(x))); }
-function clampIndex(i){ i = Number(i)||0; return Math.max(0, Math.min((GOALS.length?GOALS.length:1)-1, Math.floor(i))); }
-</script>
-</body>
-</html>
+  if (Array.isArray(val)) GOALS = val.filter(x => x
