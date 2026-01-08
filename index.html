@@ -1,3 +1,538 @@
+<!-- admin.html (Zielkarte v1 – komplett neu, Ziele & Kategorien hardcoded, nutzt nur Namen aus /kinder, filtert "~") -->
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Zielkarte – Admin (v1)</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@400;600;800&display=swap" rel="stylesheet">
+
+  <style>
+    :root{
+      --bg:#f6f7fb; --card:#ffffff; --txt:#111827; --muted:#6b7280;
+      --border:#e5e7eb; --accent:#007aff; --radius:16px;
+      --shadow:0 6px 18px rgba(0,0,0,.08); --green:#22c55e;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; padding:14px; background:var(--bg); color:var(--txt);
+      font-family:'SF Pro Display',system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+    }
+    h1{margin:6px 0 14px; text-align:center; font-size:22px; font-weight:900; color:var(--accent)}
+    .card{
+      background:var(--card); border:1px solid var(--border); border-radius:var(--radius);
+      box-shadow:var(--shadow); padding:12px; margin-bottom:12px;
+    }
+    .row{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
+    .spacer{flex:1}
+    .muted{color:var(--muted); font-size:12px; font-weight:700}
+    .pill{
+      padding:6px 10px; border:1px solid var(--border); border-radius:999px;
+      background:#fafafa; font-size:12px; font-weight:900;
+    }
+    input, select, textarea{
+      width:100%; padding:12px 14px; font-size:16px;
+      border:1px solid var(--border); border-radius:14px; background:#fff; outline:none;
+    }
+    textarea{min-height:100px; resize:vertical}
+    button{
+      border:1px solid var(--border); background:#fff; border-radius:14px;
+      padding:12px 14px; font-weight:900; cursor:pointer;
+    }
+    button.primary{background:var(--accent); border-color:var(--accent); color:#fff}
+    button:active{transform:scale(.99)}
+    .list{display:flex; flex-direction:column; gap:10px; margin-top:10px}
+    .kid{
+      border:1px solid var(--border); border-radius:16px; background:#fff;
+      padding:12px; display:flex; justify-content:space-between; align-items:center;
+      cursor:pointer;
+    }
+    .kidName{font-weight:900; font-size:16px}
+    .kidMeta{font-size:12px; color:var(--muted); font-weight:800}
+    .divider{height:1px; background:var(--border); margin:12px 0}
+
+    .overlay{
+      position:fixed; inset:0; background:rgba(0,0,0,.35);
+      display:none; align-items:flex-end; justify-content:center; padding:10px;
+    }
+    .overlay.show{display:flex}
+    .panel{
+      width:100%; max-width:760px; background:#fff; border-radius:20px;
+      border:1px solid var(--border); box-shadow:0 24px 60px rgba(0,0,0,.28);
+      padding:12px;
+    }
+    .panelTitle{font-weight:950; font-size:18px}
+    .panelSub{color:var(--muted); font-size:12px; font-weight:800; margin-top:2px}
+
+    .circles{display:grid; grid-template-columns:repeat(10,1fr); gap:8px; margin-top:10px}
+    .dot{
+      width:100%; aspect-ratio:1/1; border-radius:999px; border:2px solid var(--border);
+      background:#fff; cursor:pointer; user-select:none; -webkit-tap-highlight-color: transparent;
+    }
+    .dot.on{background:var(--green); border-color:var(--green)}
+
+    .warn{
+      background:#fff7ed; border:1px solid #fed7aa; border-radius:14px; padding:10px;
+      color:#9a3412; font-size:12px; font-weight:800;
+    }
+    .debug{
+      background:#0b1220; color:#e5e7eb; border-radius:14px; padding:10px;
+      font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;
+      font-size:12px; overflow:auto; white-space:pre-wrap;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Zielkarte – Admin</h1>
+
+  <div class="card">
+    <div class="row">
+      <div>
+        <div style="font-weight:950;">Zielkatalog (hardcoded)</div>
+        <div class="muted">Speicherort: <b>/zielkarte/v1/catalog</b> (wird beim Öffnen automatisch gesetzt/aktualisiert).</div>
+      </div>
+      <div class="spacer"></div>
+      <button id="btnPublish" class="primary">Katalog jetzt veröffentlichen</button>
+    </div>
+    <div id="catalogInfo" class="muted" style="margin-top:10px">—</div>
+  </div>
+
+  <div class="card">
+    <div class="row">
+      <input id="search" placeholder="Suche nach Namen … (Kinder mit ~ werden ausgeblendet)">
+      <span id="pillWeek" class="pill">Woche: —</span>
+      <span id="pillKids" class="pill">Kinder: —</span>
+    </div>
+
+    <div id="kidsEmpty" class="warn" style="display:none; margin-top:10px">
+      Es wurden keine passenden Namen gefunden (ohne ~) unter <b>/kinder</b>.
+    </div>
+
+    <div id="kidList" class="list"></div>
+
+    <div class="divider"></div>
+    <div class="muted">Debug:</div>
+    <div id="debug" class="debug" style="margin-top:6px">—</div>
+  </div>
+
+  <div id="overlay" class="overlay" aria-hidden="true">
+    <div class="panel">
+      <div class="row">
+        <div>
+          <div id="detailName" class="panelTitle">—</div>
+          <div id="detailMeta" class="panelSub">—</div>
+        </div>
+        <div class="spacer"></div>
+        <button id="btnClose">Schließen</button>
+      </div>
+
+      <div class="divider"></div>
+
+      <div style="font-weight:950;">Aktuelles Ziel</div>
+      <select id="goalSelect" style="margin-top:8px"></select>
+      <div class="row" style="margin-top:10px">
+        <button id="btnSetGoal" class="primary">Ziel setzen</button>
+        <span class="muted">Setzt Stempel=0 und leert Notiz.</span>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="row">
+        <div style="font-weight:950;">Stempelkarte</div>
+        <div class="spacer"></div>
+        <span id="stampsPill" class="pill">Stempel: —/10</span>
+      </div>
+      <div class="muted">Tippe Kreis #n, um den Stand zu setzen.</div>
+      <div id="circles" class="circles"></div>
+      <div class="row" style="margin-top:10px">
+        <button id="btnMinus">−</button>
+        <button id="btnPlus">+</button>
+        <button id="btnSaveStamps" class="primary">Stempel speichern</button>
+      </div>
+
+      <div class="divider"></div>
+
+      <div style="font-weight:950;">Notiz (nur diese Woche)</div>
+      <div class="muted">Freitext. Wird beim Wochenwechsel automatisch geleert, sobald du das Kind im Admin öffnest.</div>
+      <textarea id="note" style="margin-top:8px" placeholder="Kurze Notiz …"></textarea>
+      <div class="row" style="margin-top:10px">
+        <button id="btnSaveNote" class="primary">Notiz speichern</button>
+        <button id="btnClearNote">Leeren</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
+    import { getDatabase, ref, get, set, update, onValue } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-database.js";
+
+    // Firebase (gleich wie vorher)
+    const app = initializeApp({
+      apiKey: "AIzaSyAdPN2duh89Fx5rmYlFshdf0juhYNX_7fg",
+      authDomain: "punkte-45c20.firebaseapp.com",
+      databaseURL: "https://punkte-45c20-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId: "punkte-45c20",
+      storageBucket: "punkte-45c20.appspot.com",
+      messagingSenderId: "931713539549",
+      appId: "1:931713539549:web:e348bf38369639f1906a34"
+    });
+    const db = getDatabase(app);
+
+    // Alte Namen nur lesen:
+    const PATH_NAMES = "kinder";
+
+    // Neues System (alles neu):
+    const PATH_CATALOG = "zielkarte/v1/catalog";
+    const PATH_CHILDREN = "zielkarte/v1/children";
+
+    // HARD-CODED KATALOG (Kategorien + Ziele)
+    // Hinweis: IDs stabil halten (nicht ändern), sonst verlieren Kinder ihre Zuordnung.
+    const CATALOG = {
+      version: 1,
+      categories: [
+        { id: "A", title: "Soziales Miteinander" },
+        { id: "B", title: "Kommunikation & Zuhören" },
+        { id: "C", title: "Regeln & Orientierung" },
+        { id: "D", title: "Selbstständigkeit & Organisation" },
+        { id: "E", title: "Konflikte & Verantwortung" }
+      ],
+      goals: [
+        { id: "A_freundlich", categoryId: "A", text: "Ich bin freundlich zu anderen." },
+        { id: "A_teilen", categoryId: "A", text: "Ich teile Dinge (Materialien, Spielzeug)." },
+        { id: "A_helfen", categoryId: "A", text: "Ich helfe anderen, wenn sie Unterstützung brauchen." },
+        { id: "A_mitspielen", categoryId: "A", text: "Ich suche mir andere Kinder zum Spielen und bleibe fair." },
+
+        { id: "B_melden", categoryId: "B", text: "Ich melde mich, bevor ich spreche." },
+        { id: "B_lautstaerke", categoryId: "B", text: "Ich rede in angemessener Lautstärke." },
+        { id: "B_zuhoeren", categoryId: "B", text: "Ich höre anderen zu und lasse sie ausreden." },
+        { id: "B_nicht_reinrufen", categoryId: "B", text: "Ich rufe nicht rein und warte, bis ich dran bin." },
+
+        { id: "C_regeln_ohne_erinnerung", categoryId: "C", text: "Ich halte Regeln auch ohne Erinnerung ein." },
+        { id: "C_flur_langsam", categoryId: "C", text: "Ich gehe langsam durch den Flur, ohne zu drängeln." },
+        { id: "C_am_platz", categoryId: "C", text: "Ich bleibe an meinem Platz sitzen (wenn es gerade nötig ist)." },
+        { id: "C_essen", categoryId: "C", text: "Ich spiele nicht mit dem Essen." },
+
+        { id: "D_aufraeumen", categoryId: "D", text: "Ich räume meine Sachen weg." },
+        { id: "D_hilfe_holen", categoryId: "D", text: "Ich hole mir Hilfe, wenn ich alleine nicht weiterkomme." },
+        { id: "D_zeit_planen", categoryId: "D", text: "Ich plane meine Zeit eigenständig (Hausaufgaben, Spielen, Essen)." },
+        { id: "D_jacke_schuhe", categoryId: "D", text: "Ich hänge meine Jacke richtig auf und stelle meine Schuhe an den Rand." },
+
+        { id: "E_grenzen_respekt", categoryId: "E", text: "Ich respektiere die Grenzen anderer Kinder." },
+        { id: "E_streit_mit_worten", categoryId: "E", text: "Ich löse Streit mit Worten (ohne Schubsen, Schlagen oder Beleidigen)." },
+        { id: "E_nicht_kommentieren", categoryId: "E", text: "Ich kommentiere andere Kinder nicht und kümmere mich um meine eigenen Aufgaben." },
+        { id: "E_anweisungen", categoryId: "E", text: "Ich akzeptiere Anweisungen ohne Diskussion." }
+      ]
+    };
+
+    // DOM
+    const btnPublish = document.getElementById("btnPublish");
+    const catalogInfo = document.getElementById("catalogInfo");
+    const search = document.getElementById("search");
+    const pillWeek = document.getElementById("pillWeek");
+    const pillKids = document.getElementById("pillKids");
+    const kidsEmpty = document.getElementById("kidsEmpty");
+    const kidList = document.getElementById("kidList");
+    const debugEl = document.getElementById("debug");
+
+    const overlay = document.getElementById("overlay");
+    const btnClose = document.getElementById("btnClose");
+    const detailName = document.getElementById("detailName");
+    const detailMeta = document.getElementById("detailMeta");
+
+    const goalSelect = document.getElementById("goalSelect");
+    const btnSetGoal = document.getElementById("btnSetGoal");
+
+    const circlesEl = document.getElementById("circles");
+    const stampsPill = document.getElementById("stampsPill");
+    const btnMinus = document.getElementById("btnMinus");
+    const btnPlus = document.getElementById("btnPlus");
+    const btnSaveStamps = document.getElementById("btnSaveStamps");
+
+    const noteEl = document.getElementById("note");
+    const btnSaveNote = document.getElementById("btnSaveNote");
+    const btnClearNote = document.getElementById("btnClearNote");
+
+    // State
+    let NAMES = [];            // nur Keys aus /kinder, gefiltert
+    let childStates = {};      // /zielkarte/v1/children
+    let currentName = null;
+    let draftStamps = 0;
+
+    // Utils
+    const clampStamps = (x) => Math.max(0, Math.min(10, Math.floor(Number(x) || 0)));
+
+    function isoWeekString(date = new Date()){
+      const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+      const dayNum = d.getUTCDay() || 7;
+      d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+      const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+      const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+      return `${d.getUTCFullYear()}-W${String(weekNo).padStart(2,"0")}`;
+    }
+    const CURRENT_WEEK = isoWeekString();
+    pillWeek.textContent = `Woche: ${CURRENT_WEEK}`;
+
+    function showOverlay(){ overlay.classList.add("show"); overlay.setAttribute("aria-hidden","false"); }
+    function hideOverlay(){ overlay.classList.remove("show"); overlay.setAttribute("aria-hidden","true"); currentName = null; }
+    btnClose.addEventListener("click", hideOverlay);
+    overlay.addEventListener("click", (e)=>{ if(e.target === overlay) hideOverlay(); });
+
+    function firstGoalId(){ return CATALOG.goals[0]?.id || null; }
+    function getGoalById(id){ return CATALOG.goals.find(g => g.id === id) || null; }
+
+    function isValidKidName(name){
+      const n = String(name || "").trim();
+      if(!n) return false;
+      if(n.includes("~")) return false;         // Vorgabe: keine ~ Namen
+      if(n.length < 2) return false;
+      return true;
+    }
+
+    async function publishCatalog(){
+      await set(ref(db, PATH_CATALOG), CATALOG);
+      catalogInfo.textContent = `Katalog veröffentlicht. Kategorien: ${CATALOG.categories.length}, Ziele: ${CATALOG.goals.length}`;
+    }
+
+    btnPublish.addEventListener("click", async ()=>{
+      try{
+        await publishCatalog();
+      } catch(e){
+        alert("Fehler beim Veröffentlichen: " + (e?.message || String(e)));
+      }
+    });
+
+    function renderGoalSelect(activeGoalId){
+      goalSelect.innerHTML = "";
+      // optgroups by category
+      for(const cat of CATALOG.categories){
+        const group = document.createElement("optgroup");
+        group.label = cat.title;
+        const goals = CATALOG.goals.filter(g => g.categoryId === cat.id);
+        for(const g of goals){
+          const opt = document.createElement("option");
+          opt.value = g.id;
+          opt.textContent = g.text;
+          group.appendChild(opt);
+        }
+        goalSelect.appendChild(group);
+      }
+      goalSelect.value = activeGoalId || firstGoalId() || "";
+    }
+
+    function renderCircles(stamps){
+      circlesEl.innerHTML = "";
+      for(let i=1;i<=10;i++){
+        const dot = document.createElement("div");
+        dot.className = "dot" + (i <= stamps ? " on" : "");
+        dot.title = `Setze auf ${i}`;
+        dot.addEventListener("click", ()=>{
+          draftStamps = i;
+          stampsPill.textContent = `Stempel: ${draftStamps}/10`;
+          renderCircles(draftStamps);
+        });
+        circlesEl.appendChild(dot);
+      }
+    }
+
+    async function ensureChildStateExists(name){
+      if(childStates[name]) return childStates[name];
+      const init = {
+        activeGoalId: firstGoalId(),
+        stamps: 0,
+        noteText: "",
+        noteWeek: CURRENT_WEEK
+      };
+      await set(ref(db, `${PATH_CHILDREN}/${name}`), init);
+      childStates[name] = init;
+      return init;
+    }
+
+    async function ensureNoteCurrentWeek(name, st){
+      if((st.noteWeek || "") === CURRENT_WEEK) return st;
+      const patch = { noteText: "", noteWeek: CURRENT_WEEK };
+      await update(ref(db, `${PATH_CHILDREN}/${name}`), patch);
+      childStates[name] = { ...st, ...patch };
+      return childStates[name];
+    }
+
+    function renderKidList(){
+      const q = (search.value || "").toLowerCase();
+      const filtered = NAMES
+        .filter(n => n.toLowerCase().includes(q))
+        .sort((a,b)=>a.localeCompare(b,'de'));
+
+      kidList.innerHTML = "";
+
+      if(filtered.length === 0){
+        kidsEmpty.style.display = NAMES.length ? "none" : "block";
+        if(NAMES.length){
+          const div = document.createElement("div");
+          div.className = "warn";
+          div.textContent = "Keine Treffer für die Suche.";
+          kidList.appendChild(div);
+        }
+        return;
+      }
+      kidsEmpty.style.display = "none";
+
+      for(const name of filtered){
+        const st = childStates[name] || {};
+        const stamps = clampStamps(st.stamps ?? 0);
+        const goal = st.activeGoalId ? getGoalById(st.activeGoalId) : null;
+
+        const el = document.createElement("div");
+        el.className = "kid";
+        el.innerHTML = `
+          <div>
+            <div class="kidName">${name}</div>
+            <div class="kidMeta">${stamps}/10 • ${(goal?.text || "— kein Ziel —")}</div>
+          </div>
+          <div class="kidMeta">›</div>
+        `;
+        el.addEventListener("click", ()=>openKid(name));
+        kidList.appendChild(el);
+      }
+
+      pillKids.textContent = `Kinder: ${NAMES.length}`;
+    }
+
+    search.addEventListener("input", renderKidList);
+
+    async function openKid(name){
+      currentName = name;
+      detailName.textContent = name;
+
+      let st = await ensureChildStateExists(name);
+      st = await ensureNoteCurrentWeek(name, st);
+
+      const stamps = clampStamps(st.stamps ?? 0);
+      draftStamps = stamps;
+
+      const goal = st.activeGoalId ? getGoalById(st.activeGoalId) : null;
+      detailMeta.textContent = `${stamps}/10 • ${CURRENT_WEEK} • ${(goal?.text || "— kein Ziel —")}`;
+
+      renderGoalSelect(st.activeGoalId);
+      stampsPill.textContent = `Stempel: ${stamps}/10`;
+      renderCircles(stamps);
+
+      noteEl.value = st.noteText || "";
+
+      showOverlay();
+    }
+
+    btnMinus.addEventListener("click", ()=>{
+      if(!currentName) return;
+      draftStamps = clampStamps(draftStamps - 1);
+      stampsPill.textContent = `Stempel: ${draftStamps}/10`;
+      renderCircles(draftStamps);
+    });
+
+    btnPlus.addEventListener("click", ()=>{
+      if(!currentName) return;
+      draftStamps = clampStamps(draftStamps + 1);
+      stampsPill.textContent = `Stempel: ${draftStamps}/10`;
+      renderCircles(draftStamps);
+    });
+
+    btnSaveStamps.addEventListener("click", async ()=>{
+      if(!currentName) return;
+      await update(ref(db, `${PATH_CHILDREN}/${currentName}`), { stamps: draftStamps });
+      const st = childStates[currentName] || {};
+      childStates[currentName] = { ...st, stamps: draftStamps };
+      const goal = childStates[currentName].activeGoalId ? getGoalById(childStates[currentName].activeGoalId) : null;
+      detailMeta.textContent = `${draftStamps}/10 • ${CURRENT_WEEK} • ${(goal?.text || "— kein Ziel —")}`;
+      renderKidList();
+    });
+
+    btnSetGoal.addEventListener("click", async ()=>{
+      if(!currentName) return;
+      const goalId = goalSelect.value || firstGoalId();
+      if(!goalId){
+        alert("Kein Ziel verfügbar.");
+        return;
+      }
+      const patch = { activeGoalId: goalId, stamps: 0, noteText: "", noteWeek: CURRENT_WEEK };
+      await update(ref(db, `${PATH_CHILDREN}/${currentName}`), patch);
+      childStates[currentName] = { ...(childStates[currentName] || {}), ...patch };
+
+      draftStamps = 0;
+      stampsPill.textContent = "Stempel: 0/10";
+      renderCircles(0);
+      noteEl.value = "";
+
+      const goal = getGoalById(goalId);
+      detailMeta.textContent = `0/10 • ${CURRENT_WEEK} • ${(goal?.text || "— kein Ziel —")}`;
+      renderKidList();
+    });
+
+    btnSaveNote.addEventListener("click", async ()=>{
+      if(!currentName) return;
+      const text = (noteEl.value || "").trim();
+      const patch = { noteText: text, noteWeek: CURRENT_WEEK };
+      await update(ref(db, `${PATH_CHILDREN}/${currentName}`), patch);
+      childStates[currentName] = { ...(childStates[currentName] || {}), ...patch };
+      renderKidList();
+    });
+
+    btnClearNote.addEventListener("click", async ()=>{
+      noteEl.value = "";
+      if(!currentName) return;
+      const patch = { noteText: "", noteWeek: CURRENT_WEEK };
+      await update(ref(db, `${PATH_CHILDREN}/${currentName}`), patch);
+      childStates[currentName] = { ...(childStates[currentName] || {}), ...patch };
+      renderKidList();
+    });
+
+    // Live: Namen aus altem Pfad (nur Keys), filter "~"
+    onValue(ref(db, PATH_NAMES), async (snap)=>{
+      const arr = [];
+      if(snap.exists()){
+        snap.forEach(ch => {
+          const name = ch.key;
+          if(isValidKidName(name)) arr.push(name);
+        });
+      }
+      NAMES = arr;
+      pillKids.textContent = `Kinder: ${NAMES.length}`;
+      renderKidList();
+
+      debugEl.textContent =
+        `names: /${PATH_NAMES} -> ${NAMES.length} (gefiltert: "~")\n` +
+        `catalog: hardcoded (${CATALOG.goals.length} goals)\n` +
+        `states: /${PATH_CHILDREN} -> live\n` +
+        `week: ${CURRENT_WEEK}`;
+    }, (err)=>{
+      debugEl.textContent = "names listener error:\n" + (err?.message || String(err));
+    });
+
+    // Live: States (neuer Pfad)
+    onValue(ref(db, PATH_CHILDREN), (snap)=>{
+      const map = {};
+      if(snap.exists()){
+        snap.forEach(ch => map[ch.key] = ch.val() || {});
+      }
+      childStates = map;
+      renderKidList();
+    }, (err)=>{
+      debugEl.textContent = "children listener error:\n" + (err?.message || String(err));
+    });
+
+    // Init: Katalog automatisch setzen (damit Index sofort läuft)
+    (async function init(){
+      try{
+        await publishCatalog();
+      } catch(e){
+        // still usable even if catalog write fails (depends on rules)
+      }
+      catalogInfo.textContent = `Kategorien: ${CATALOG.categories.length} • Ziele: ${CATALOG.goals.length}`;
+    })();
+  </script>
+</body>
+</html>
+
+<!-- index.html (Zielkarte v1 – kompatibel zu admin.html, Ziele & Kategorien hardcoded, filtert "~", nutzt neuen State-Pfad) -->
 <!DOCTYPE html>
 <html lang="de">
 <head>
@@ -52,17 +587,11 @@
       display:grid; grid-template-columns:repeat(5,1fr); gap:12px;
       max-width:420px; margin:18px auto 12px;
     }
-    .dot{
-      aspect-ratio:1/1; border-radius:999px; border:2px solid var(--border); background:#fff;
-    }
+    .dot{aspect-ratio:1/1; border-radius:999px; border:2px solid var(--border); background:#fff}
     .dot.on{background:var(--fill); border-color:var(--fill)}
     .goalText{font-size:20px; font-weight:900; text-align:center; margin-top:10px}
     .hint{font-size:12px; color:var(--muted); text-align:center; margin-top:6px; font-weight:800}
     .empty{text-align:center; font-size:13px; color:var(--muted); font-weight:800; padding:20px 0}
-    .warn{
-      background:#fff7ed; border:1px solid #fed7aa; border-radius:14px; padding:10px;
-      color:#9a3412; font-size:12px; font-weight:800; margin-top:10px;
-    }
   </style>
 </head>
 
@@ -99,10 +628,6 @@
       <div id="circles" class="circles"></div>
       <div id="goalText" class="goalText">—</div>
       <div class="hint">Sammle 10 Stempel, um dein Ziel zu erreichen.</div>
-
-      <div id="noCatalogWarn" class="warn hidden">
-        Es ist noch kein Zielkatalog vorhanden. Bitte im <b>admin.html</b> den Katalog speichern.
-      </div>
     </div>
   </div>
 
@@ -110,7 +635,6 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
     import { getDatabase, ref, get, set, onValue } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-database.js";
 
-    // Firebase (wie Admin)
     const app = initializeApp({
       apiKey: "AIzaSyAdPN2duh89Fx5rmYlFshdf0juhYNX_7fg",
       authDomain: "punkte-45c20.firebaseapp.com",
@@ -122,10 +646,46 @@
     });
     const db = getDatabase(app);
 
-    // Paths (neu)
-    const PATH_NAMES = "kinder"; // nur keys
-    const PATH_CATALOG = "zielkarte/v1/catalog";
+    const PATH_NAMES = "kinder";
     const PATH_CHILDREN = "zielkarte/v1/children";
+
+    // HARD-CODED KATALOG (muss identisch zum Admin sein)
+    const CATALOG = {
+      version: 1,
+      categories: [
+        { id: "A", title: "Soziales Miteinander" },
+        { id: "B", title: "Kommunikation & Zuhören" },
+        { id: "C", title: "Regeln & Orientierung" },
+        { id: "D", title: "Selbstständigkeit & Organisation" },
+        { id: "E", title: "Konflikte & Verantwortung" }
+      ],
+      goals: [
+        { id: "A_freundlich", categoryId: "A", text: "Ich bin freundlich zu anderen." },
+        { id: "A_teilen", categoryId: "A", text: "Ich teile Dinge (Materialien, Spielzeug)." },
+        { id: "A_helfen", categoryId: "A", text: "Ich helfe anderen, wenn sie Unterstützung brauchen." },
+        { id: "A_mitspielen", categoryId: "A", text: "Ich suche mir andere Kinder zum Spielen und bleibe fair." },
+
+        { id: "B_melden", categoryId: "B", text: "Ich melde mich, bevor ich spreche." },
+        { id: "B_lautstaerke", categoryId: "B", text: "Ich rede in angemessener Lautstärke." },
+        { id: "B_zuhoeren", categoryId: "B", text: "Ich höre anderen zu und lasse sie ausreden." },
+        { id: "B_nicht_reinrufen", categoryId: "B", text: "Ich rufe nicht rein und warte, bis ich dran bin." },
+
+        { id: "C_regeln_ohne_erinnerung", categoryId: "C", text: "Ich halte Regeln auch ohne Erinnerung ein." },
+        { id: "C_flur_langsam", categoryId: "C", text: "Ich gehe langsam durch den Flur, ohne zu drängeln." },
+        { id: "C_am_platz", categoryId: "C", text: "Ich bleibe an meinem Platz sitzen (wenn es gerade nötig ist)." },
+        { id: "C_essen", categoryId: "C", text: "Ich spiele nicht mit dem Essen." },
+
+        { id: "D_aufraeumen", categoryId: "D", text: "Ich räume meine Sachen weg." },
+        { id: "D_hilfe_holen", categoryId: "D", text: "Ich hole mir Hilfe, wenn ich alleine nicht weiterkomme." },
+        { id: "D_zeit_planen", categoryId: "D", text: "Ich plane meine Zeit eigenständig (Hausaufgaben, Spielen, Essen)." },
+        { id: "D_jacke_schuhe", categoryId: "D", text: "Ich hänge meine Jacke richtig auf und stelle meine Schuhe an den Rand." },
+
+        { id: "E_grenzen_respekt", categoryId: "E", text: "Ich respektiere die Grenzen anderer Kinder." },
+        { id: "E_streit_mit_worten", categoryId: "E", text: "Ich löse Streit mit Worten (ohne Schubsen, Schlagen oder Beleidigen)." },
+        { id: "E_nicht_kommentieren", categoryId: "E", text: "Ich kommentiere andere Kinder nicht und kümmere mich um meine eigenen Aufgaben." },
+        { id: "E_anweisungen", categoryId: "E", text: "Ich akzeptiere Anweisungen ohne Diskussion." }
+      ]
+    };
 
     // DOM
     const listView = document.getElementById("listView");
@@ -138,16 +698,20 @@
     const kidNameEl = document.getElementById("kidName");
     const circlesEl = document.getElementById("circles");
     const goalTextEl = document.getElementById("goalText");
-    const noCatalogWarn = document.getElementById("noCatalogWarn");
 
     // State
     let NAMES = [];
-    let catalog = null;
     let childStates = {};
 
     // Utils
     const clampStamps = (x) => Math.max(0, Math.min(10, Math.floor(Number(x) || 0)));
-
+    function isValidKidName(name){
+      const n = String(name || "").trim();
+      if(!n) return false;
+      if(n.includes("~")) return false;   // Vorgabe
+      if(n.length < 2) return false;
+      return true;
+    }
     function isoWeekString(date = new Date()){
       const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
       const dayNum = d.getUTCDay() || 7;
@@ -158,13 +722,8 @@
     }
     const CURRENT_WEEK = isoWeekString();
 
-    function firstGoalId(){
-      return catalog?.goals?.[0]?.id || null;
-    }
-    function getGoalById(id){
-      if(!catalog?.goals?.length) return null;
-      return catalog.goals.find(g => g.id === id) || null;
-    }
+    function firstGoalId(){ return CATALOG.goals[0]?.id || null; }
+    function getGoalById(id){ return CATALOG.goals.find(g => g.id === id) || null; }
 
     function toggle(showList){
       listView.classList.toggle("hidden", !showList);
@@ -182,14 +741,15 @@
 
     function renderList(){
       const q = (searchEl.value || "").toLowerCase();
-      const filtered = NAMES.filter(n => n.toLowerCase().includes(q)).sort((a,b)=>a.localeCompare(b,'de'));
+      const filtered = NAMES
+        .filter(n => n.toLowerCase().includes(q))
+        .sort((a,b)=>a.localeCompare(b,'de'));
 
       kidListEl.innerHTML = "";
 
       if(filtered.length === 0){
         noKidsEl.classList.toggle("hidden", NAMES.length !== 0);
         if(NAMES.length !== 0){
-          // search no hits
           const div = document.createElement("div");
           div.className = "empty";
           div.textContent = "Keine Treffer.";
@@ -231,17 +791,6 @@
     async function openDetail(name){
       kidNameEl.textContent = name;
 
-      // If no catalog yet, still show page but warn
-      if(!catalog?.goals?.length){
-        noCatalogWarn.classList.remove("hidden");
-        goalTextEl.textContent = "—";
-        renderCircles(0);
-        toggle(false);
-        return;
-      } else {
-        noCatalogWarn.classList.add("hidden");
-      }
-
       const st = await ensureChildStateExists(name);
       const stamps = clampStamps(st.stamps ?? 0);
       const goal = st.activeGoalId ? getGoalById(st.activeGoalId) : null;
@@ -251,24 +800,25 @@
       toggle(false);
     }
 
-    // Live: names only (keys)
+    // Live: Namen aus /kinder (Keys) gefiltert
     onValue(ref(db, PATH_NAMES), (snap)=>{
       const arr = [];
-      if(snap.exists()) snap.forEach(ch => arr.push(ch.key));
+      if(snap.exists()){
+        snap.forEach(ch => {
+          const name = ch.key;
+          if(isValidKidName(name)) arr.push(name);
+        });
+      }
       NAMES = arr;
       renderList();
     });
 
-    // Live: catalog
-    onValue(ref(db, PATH_CATALOG), (snap)=>{
-      catalog = snap.exists() ? snap.val() : null;
-      renderList();
-    });
-
-    // Live: states
+    // Live: States aus neuem Pfad
     onValue(ref(db, PATH_CHILDREN), (snap)=>{
       const map = {};
-      if(snap.exists()) snap.forEach(ch => map[ch.key] = ch.val() || {});
+      if(snap.exists()){
+        snap.forEach(ch => map[ch.key] = ch.val() || {});
+      }
       childStates = map;
       renderList();
     });
