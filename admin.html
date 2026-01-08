@@ -1,124 +1,78 @@
+<!-- index.html (Kinderansicht) -->
 <!DOCTYPE html>
 <html lang="de">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Ziele – Admin</title>
-<link href="https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@400;600&display=swap" rel="stylesheet">
-<style>
-  :root{--bg:#f4f4f4;--card:#fff;--txt:#1c1c1e;--muted:#6b7280;--border:#e5e7eb;--accent:#007aff;--rad:12px;--shadow:0 4px 10px rgba(0,0,0,.08)}
-  body{font-family:'SF Pro Display',sans-serif;background:var(--bg);color:var(--txt);margin:0;padding:16px}
-  h1{font-size:22px;margin:0 0 16px;text-align:center;color:var(--accent)}
-  .grid{display:grid;grid-template-columns:320px 1fr;gap:16px;align-items:start}
-  .card{background:var(--card);border:1px solid var(--border);border-radius:var(--rad);box-shadow:var(--shadow);padding:14px}
-  .section-title{font-weight:600;margin:0 0 10px}
-  .muted{color:var(--muted);font-size:12px}
-  .search{width:100%;padding:10px;border:1px solid var(--border);border-radius:10px}
-  .list{display:flex;flex-direction:column;gap:8px;margin-top:10px;max-height:70vh;overflow:auto}
-  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-  .kid{display:flex;justify-content:space-between;align-items:center;padding:10px;border:1px solid var(--border);border-radius:10px;background:#fff;cursor:pointer}
-  .kid:hover{background:#f9fafb}
-  .btn{background:#fff;border:1px solid var(--border);border-radius:10px;padding:8px 12px;cursor:pointer;font-weight:600}
-  .btn:hover{background:#f3f4f6}
-  .btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
-  .btn.danger{background:#ef4444;color:#fff;border-color:#ef4444}
-  .pill{padding:6px 10px;border:1px solid var(--border);border-radius:999px;background:#fafafa;font-size:12px}
-  .input{padding:8px;border:1px solid var(--border);border-radius:10px;width:100%}
-  .select{padding:8px;border:1px solid var(--border);border-radius:10px;background:#fff;width:100%}
-  .progressWrap{width:100%;height:16px;background:#eef2ff;border:1px solid var(--border);border-radius:999px;overflow:hidden}
-  .progressBar{height:100%;width:0;background:linear-gradient(90deg,#22c55e,#60a5fa);transition:width .4s ease}
-  .divider{height:1px;background:var(--border);margin:12px 0}
-  .callout{background:#fff7ed;border:1px solid #fed7aa;padding:10px;border-radius:10px}
-  .goal-item{display:flex;gap:8px;align-items:center;margin-bottom:8px}
-  .goal-item input{flex:1}
-  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-  .table{width:100%;border-collapse:collapse}
-  .table th,.table td{border-bottom:1px solid var(--border);padding:6px 4px;text-align:left;font-size:14px}
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Zielkarte</title>
+  <link href="https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --bg:#f9f9fb; --card:#ffffff; --txt:#1c1c1e; --muted:#6b7280;
+      --border:#e5e5ea; --radius:14px; --shadow:0 2px 8px rgba(0,0,0,0.06);
+    }
+    body{font-family:'SF Pro Display',system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--txt);margin:0;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:16px}
+    h1{margin:12px 0 14px;font-size:26px;font-weight:700;text-align:center}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;width:95%;max-width:720px}
+    .search{width:100%;max-width:340px;font-size:16px;padding:12px;margin:0 auto 12px;border:1px solid var(--border);border-radius:12px;display:block}
+    .grid{display:flex;flex-direction:column;align-items:center;gap:10px}
+    .kidBtn{background:#fff;border:1px solid var(--border);border-radius:14px;padding:16px 18px;font-size:20px;font-weight:700;color:#000;box-shadow:var(--shadow);cursor:pointer;width:95%;max-width:360px;text-align:center;transition:transform .08s ease, background .2s ease}
+    .kidBtn:active{transform:scale(0.98)}
+    .hidden{display:none}
+
+    .toolbar{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+    .back{background:#fff;border:1px solid var(--border);border-radius:12px;padding:10px 14px;font-weight:700;cursor:pointer}
+    .headerRow{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:6px}
+    .mouse{width:44px;height:44px;display:inline-block}
+    .subtitle{text-align:center;color:var(--muted);font-size:14px;margin-top:6px}
+
+    .circles{display:grid;grid-template-columns:repeat(5, 1fr);gap:10px;max-width:380px;margin:16px auto 8px}
+    .dot{width:100%;aspect-ratio:1/1;border-radius:999px;border:2px solid var(--border);background:#fff;box-shadow:0 1px 3px rgba(0,0,0,0.04) inset}
+    .dot.filled{background:#111827;border-color:#111827}
+    .goalTitle{font-size:18px;font-weight:800;text-align:center;margin-top:10px}
+  </style>
 </head>
 <body>
-<h1>Ziele – Admin</h1>
+  <h1>Zielkarte</h1>
 
-<div class="grid">
-  <!-- Kinder -->
-  <div class="card">
-    <div class="section-title">Kinder (nur mit Farbe)</div>
-    <input id="search" class="search" placeholder="Suche nach Namen…">
-    <div id="kidList" class="list"></div>
+  <!-- LISTE -->
+  <div id="listView" class="card">
+    <input id="search" class="search" placeholder="Suche nach Namen…" />
+    <div id="kidList" class="grid"></div>
   </div>
 
-  <!-- Details + Verwaltung -->
-  <div class="card">
-    <!-- Abschlüsse warten (dynamisch sichtbar) -->
-    <div id="abschlussSection" class="callout" style="display:none;margin-bottom:12px">
-      <div class="section-title" style="margin:0 0 6px">Abschlüsse warten auf Freigabe</div>
-      <div id="abschlussList" class="list" style="max-height:180px"></div>
+  <!-- DETAIL -->
+  <div id="detailView" class="card hidden">
+    <div class="toolbar">
+      <button id="backBtn" class="back">🏠 Zurück</button>
+      <div style="flex:1"></div>
     </div>
 
-    <div class="two-col">
-      <!-- Detail Kind -->
+    <div class="headerRow">
+      <!-- Maus-Icon (SVG, ohne externe Datei) -->
+      <svg class="mouse" viewBox="0 0 64 64" aria-hidden="true">
+        <circle cx="20" cy="18" r="10" fill="#111827"/>
+        <circle cx="44" cy="18" r="10" fill="#111827"/>
+        <ellipse cx="32" cy="36" rx="18" ry="16" fill="#111827"/>
+        <circle cx="26" cy="34" r="3" fill="#fff"/>
+        <circle cx="38" cy="34" r="3" fill="#fff"/>
+        <circle cx="26" cy="34" r="1.5" fill="#111827"/>
+        <circle cx="38" cy="34" r="1.5" fill="#111827"/>
+        <ellipse cx="32" cy="42" rx="6" ry="4" fill="#fff"/>
+      </svg>
       <div>
-        <div class="section-title">Ausgewähltes Kind</div>
-        <div id="kidName" class="pill">—</div>
-
-        <div class="row" style="margin-top:8px">
-          <div class="pill" id="goalIndex">Ziel —</div>
-          <div id="goalTitle" style="font-weight:600">—</div>
-        </div>
-
-        <div class="progressWrap" style="margin-top:10px"><div id="bar" class="progressBar"></div></div>
-        <div id="percent" class="muted" style="margin-top:6px">Fortschritt: —%</div>
-
-        <div class="row" style="margin-top:10px">
-          <button id="minus10" class="btn">−10%</button>
-          <button id="minus5"  class="btn">−5%</button>
-          <input id="progInput" class="input" type="number" min="0" max="100" step="1" placeholder="Prozent eingeben">
-          <button id="plus5"   class="btn">+5%</button>
-          <button id="plus10"  class="btn">+10%</button>
-          <button id="saveProg" class="btn primary">Speichern</button>
-        </div>
-
-        <div class="divider"></div>
-
-        <!-- Ziel jederzeit ändern -->
-        <div class="section-title">Aktives Ziel ändern</div>
-        <select id="setGoalSelect" class="select"></select>
-        <div class="row" style="margin-top:8px">
-          <button id="setGoalBtn" class="btn primary">Ziel setzen</button>
-        </div>
-      </div>
-
-      <!-- Ziele verwalten + Archiv -->
-      <div>
-        <div class="section-title">Ziele verwalten</div>
-        <div id="goalsList"></div>
-        <div class="row" style="margin-top:8px">
-          <input id="newGoalText" class="input" placeholder="Neues Ziel…">
-          <button id="addGoal" class="btn">Hinzufügen</button>
-          <button id="saveGoals" class="btn primary">Ziele speichern</button>
-        </div>
-
-        <div class="divider"></div>
-
-        <div class="row">
-          <div class="section-title" style="margin:0">Archiv</div>
-          <span class="muted">(Zielverläufe)</span>
-        </div>
-        <select id="archKidSelect" class="select" style="margin-top:6px"></select>
-        <div class="list" style="max-height:260px;overflow:auto;margin-top:8px">
-          <table class="table">
-            <thead><tr><th>Kind</th><th>Ziel</th><th>Von</th><th>Bis</th><th>100%</th></tr></thead>
-            <tbody id="archBody"></tbody>
-          </table>
-        </div>
+        <div style="font-size:18px;font-weight:800;line-height:1">Deine Zielkarte</div>
+        <div id="kidName" class="subtitle"></div>
       </div>
     </div>
+
+    <div id="circles" class="circles" aria-label="Stempelkarte"></div>
+    <div id="goalTitle" class="goalTitle">—</div>
   </div>
-</div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
-import { getDatabase, ref, get, onValue, update, set, push } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-database.js";
+import { getDatabase, ref, get, onValue } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-database.js";
 
 /* Firebase (punkte-45c20) */
 const app = initializeApp({
@@ -133,442 +87,102 @@ const app = initializeApp({
 const db = getDatabase(app);
 
 /* DOM */
-const search = document.getElementById('search');
+const listView = document.getElementById('listView');
+const detailView = document.getElementById('detailView');
 const kidList = document.getElementById('kidList');
-const abschlussSection = document.getElementById('abschlussSection');
-const abschlussList = document.getElementById('abschlussList');
-
+const search = document.getElementById('search');
+const backBtn = document.getElementById('backBtn');
 const kidNameEl = document.getElementById('kidName');
-const goalIndexEl = document.getElementById('goalIndex');
+const circlesEl = document.getElementById('circles');
 const goalTitleEl = document.getElementById('goalTitle');
-const bar = document.getElementById('bar');
-const percentEl = document.getElementById('percent');
-
-const minus10 = document.getElementById('minus10');
-const minus5  = document.getElementById('minus5');
-const plus5   = document.getElementById('plus5');
-const plus10  = document.getElementById('plus10');
-const progInput = document.getElementById('progInput');
-const saveProg  = document.getElementById('saveProg');
-
-const setGoalSelect = document.getElementById('setGoalSelect');
-const setGoalBtn = document.getElementById('setGoalBtn');
-
-const goalsList = document.getElementById('goalsList');
-const newGoalText = document.getElementById('newGoalText');
-const addGoal = document.getElementById('addGoal');
-const saveGoals = document.getElementById('saveGoals');
-
-const archKidSelect = document.getElementById('archKidSelect');
-const archBody = document.getElementById('archBody');
 
 /* State */
 let GOALS = [];
-let KIDS = []; // nur mit farbe
-let currentKid = null;
+let KIDS = [];
 
-/* Utils */
-const clamp01 = x => Math.max(0, Math.min(100, x|0));
-const idxClamp = i => Math.max(0, Math.min((GOALS.length?GOALS.length:1)-1, i|0));
-const ts = () => new Date().toISOString();
-const fmt = s => { const d = new Date(s); return isNaN(+d) ? "—" :
-  `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; };
-
-/* Ziele laden – robust (Array oder Objekt) */
+/* Ziele laden */
 async function loadGoals(){
   const s = await get(ref(db,"ziele/meta"));
   const val = s.exists() ? s.val() : null;
 
   if (Array.isArray(val)) {
-    GOALS = val.filter(g => g && String(g).trim() !== "");
-  } else if (val && typeof val === "object") {
-    const arr = Object.values(val);
-    arr.sort((a,b)=> (a.order??999) - (b.order??999));
-    GOALS = arr.map(g => g.text ?? String(g)).filter(Boolean);
+    GOALS = val.filter(x => x && String(x).trim() !== "");
   } else {
     GOALS = [];
   }
+
   if (GOALS.length === 0) {
-    GOALS = [
-      "Ich bin freundlich zu anderen.",
-      "Ich rede in angemessener Lautstärke.",
-      "Ich höre anderen zu und lasse sie ausreden.",
-      "Ich respektiere die Grenzen anderer Kinder.",
-      "Ich streite ohne Schubsen, Schlagen oder Beleidigen.",
-      "Ich teile Dinge (Materialien, Essen).",
-      "Ich helfe anderen, wenn sie Unterstützung brauchen.",
-      "Ich erinnere andere freundlich an Regeln.",
-      "Ich bleibe an meinem Platz sitzen.",
-      "Ich spiele nicht mit dem Essen.",
-      "Ich räume meine Sachen weg.",
-      "Ich gehe langsam durch den Flur, ohne zu drängeln.",
-      "Ich hole mir Hilfe, wenn ich alleine nicht weiterkomme.",
-      "Ich plane meine Zeit eigenständig (Hausaufgaben, Spielen, Essen).",
-      "Ich halte Regeln auch ohne Erinnerung ein.",
-      "Ich bin ein Vorbild für andere Kinder."
-    ];
+    GOALS = ["—"];
   }
-  renderGoalsManager();
-  renderGoalDropdowns();
 }
 
-/* Kinder + Abschlüsse live */
+/* Kinder live laden (nur mit farbe) */
 onValue(ref(db,"kinder"), async (snap)=>{
   await loadGoals();
-  KIDS.length = 0;
-
-  if (!snap.exists()) {
-    kidList.innerHTML = "<div class='muted'>Keine Kinder in der DB.</div>";
-    renderAbschluesse();
-    renderArchKidSelect();
-    return;
-  }
-
+  KIDS = [];
   snap.forEach(ch=>{
     const v = ch.val()||{};
-    if (v.farbe !== undefined) KIDS.push({ name: ch.key, ...v });
+    if (v.farbe === undefined) return; // euer Filter
+    KIDS.push({
+      name: ch.key,
+      activeGoalIndex: clampIndex(v.activeGoalIndex ?? 0),
+      stamps: clampStamps(v.stamps ?? 0)
+    });
   });
-
-  if (KIDS.length === 0) {
-    kidList.innerHTML = "<div class='muted'>Es gibt Kinder, aber keines hat ein Farbfeld. Setze erst eine Farbe im Mäusegruppe-Admin.</div>";
-  } else {
-    KIDS.sort((a,b)=>a.name.localeCompare(b.name,'de'));
-    renderKidList();
-  }
-
-  renderAbschluesse();
-  renderArchKidSelect();
-  if (currentKid) openKid(currentKid.name);
+  KIDS.sort((a,b)=>a.name.localeCompare(b.name,'de'));
+  renderList();
 });
 
-/* Liste */
-function renderKidList(){
+/* Liste rendern */
+function renderList(){
   const q = (search.value||"").toLowerCase();
   kidList.innerHTML = "";
   KIDS.filter(k=>k.name.toLowerCase().includes(q)).forEach(k=>{
-    const row = document.createElement('div');
-    row.className = 'kid';
-    row.innerHTML = `<div><b>${k.name}</b></div><div class="muted">Ziel ${idxClamp(k.activeGoalIndex??0)+1} • ${clamp01(k.progress??0)}%</div>`;
-    row.onclick = ()=>openKid(k.name);
-    kidList.appendChild(row);
+    const btn = document.createElement('button');
+    btn.className = 'kidBtn';
+    btn.textContent = k.name;
+    btn.onclick = ()=>openDetail(k.name);
+    kidList.appendChild(btn);
   });
 }
-search.addEventListener('input', renderKidList);
+search.addEventListener('input', renderList);
 
-/* Detail */
-async function openKid(name){
+/* Detail öffnen */
+async function openDetail(name){
   const s = await get(ref(db,`kinder/${name}`));
-  if (!s.exists()) { alert("Kind nicht gefunden."); return; }
+  if (!s.exists()) return;
   const v = s.val()||{};
-  if (v.farbe === undefined) { alert("Dieses Kind hat kein Farbkonto."); return; }
-  currentKid = { name, ...v };
+  if (v.farbe === undefined) return;
 
-  const idx = idxClamp(v.activeGoalIndex ?? 0);
-  const prog = clamp01(v.progress ?? 0);
+  toggleViews(false);
+
+  const idx = clampIndex(v.activeGoalIndex ?? 0);
+  const stamps = clampStamps(v.stamps ?? 0);
 
   kidNameEl.textContent = name;
-  goalIndexEl.textContent = `Ziel ${idx+1}`;
   goalTitleEl.textContent = GOALS[idx] || "—";
-
-  bar.style.width = "0%";
-  requestAnimationFrame(()=>{ bar.style.width = prog + "%"; });
-  percentEl.textContent = `Fortschritt: ${prog}%`;
-  progInput.value = prog;
-
-  renderGoalDropdowns(idx);
-  renderArchive(name);
+  renderCircles(stamps);
 }
 
-/* Meilensteine nur einmal belohnen */
-async function applyProgressWithRewards(name, newProgress){
-  const s = await get(ref(db, `kinder/${name}`));
-  if(!s.exists()) return;
-  const v = s.val()||{};
-  let saldo = v.punkte || 0;
-  let last  = v.lastRewardedMilestone ?? 0;
-
-  const capped = Math.min(newProgress, 100);
-  const from = Math.floor(Math.max(last,0)/10);
-  const to   = Math.floor(capped/10);
-
-  if (to > from){
-    for(let m=from+1; m<=to && m<10; m++){ // 10..90 % je EINMAL
-      saldo += 1; last = m*10;
-    }
-  }
-
-  if (capped >= 100){
-    if (last < 100){ saldo += 1; last = 100; }
-    await update(ref(db, `kinder/${name}`), {
-      punkte: saldo,
-      progress: 100,
-      lastRewardedMilestone: 100,
-      needsGoalAssignment: true,
-      farbe: "⚪"
-    });
-    await markArchiveCompleted(name); // 100% in Archiv markieren
-    renderAbschluesse();
-  } else {
-    await update(ref(db, `kinder/${name}`), {
-      punkte: saldo,
-      lastRewardedMilestone: last,
-      progress: clamp01(capped)
-    });
+function renderCircles(stamps){
+  circlesEl.innerHTML = "";
+  for (let i=0;i<10;i++){
+    const dot = document.createElement('div');
+    dot.className = 'dot' + (i < stamps ? ' filled' : '');
+    circlesEl.appendChild(dot);
   }
 }
 
-/* Progress-Buttons */
-minus10.onclick = ()=>{ if(!currentKid) return; progInput.value = clamp01((+progInput.value||0)-10); };
-minus5.onclick  = ()=>{ if(!currentKid) return; progInput.value = clamp01((+progInput.value||0)-5);  };
-plus5.onclick   = ()=>{ if(!currentKid) return; progInput.value = clamp01((+progInput.value||0)+5);  };
-plus10.onclick  = ()=>{ if(!currentKid) return; progInput.value = clamp01((+progInput.value||0)+10); };
-saveProg.onclick = async ()=>{
-  if(!currentKid) return;
-  const p = clamp01(+progInput.value||0);
-  await applyProgressWithRewards(currentKid.name, p);
-  openKid(currentKid.name);
-};
-
-/* Abschlüsse warten (sichtbar nur bei Bedarf) */
-async function renderAbschluesse(){
-  const box = document.getElementById("abschlussList");
-  box.innerHTML = "";
-  let count = 0;
-
-  const [snap, goalsOK] = await Promise.all([
-    get(ref(db,"kinder")), Promise.resolve(true)
-  ]);
-  if (snap.exists()){
-    snap.forEach(ch=>{
-      const name = ch.key; const v = ch.val()||{};
-      if (v.farbe === undefined) return;
-      if (v.progress === 100 && v.needsGoalAssignment){
-        const idx = idxClamp(v.activeGoalIndex ?? 0);
-        const zielTitel = GOALS[idx] || "—";
-        const row = document.createElement("div");
-        row.className = "kid";
-        row.innerHTML = `
-          <div><b>${name}</b> hat 100 % erreicht – „${zielTitel}“</div>
-          <div class="row">
-            <button class="btn" onclick="giveFinal5('${name}')">Bonus +5</button>
-            <button class="btn primary" onclick="advanceGoalUI('${name}')">Nächstes Ziel</button>
-          </div>`;
-        box.appendChild(row);
-        count++;
-      }
-    });
-  }
-  abschlussSection.style.display = count>0 ? "block" : "none";
-}
-window.giveFinal5 = async function(name){
-  const s = await get(ref(db, `kinder/${name}`));
-  if (!s.exists()) return;
-  const v = s.val()||{};
-  await update(ref(db, `kinder/${name}`), { punkte: (v.punkte||0) + 5 });
-  alert(`${name}: +5 Mausdollar vergeben.`);
-};
-window.advanceGoalUI = async function(name){
-  const s = await get(ref(db, `kinder/${name}`));
-  if (!s.exists()) return;
-  const v = s.val()||{};
-  const nextIdx = idxClamp((v.activeGoalIndex ?? 0) + 1);
-  await setActiveGoal(name, nextIdx);
-  alert(`${name}: auf „Ziel ${nextIdx+1}“ gesetzt.`);
-  renderAbschluesse();
-  if (currentKid && currentKid.name===name) openKid(name);
-};
-
-/* Ziel jederzeit ändern (Dropdown) */
-function renderGoalDropdowns(currentIdx=0){
-  setGoalSelect.innerHTML = "";
-  GOALS.forEach((t,i)=>{
-    const opt = document.createElement('option');
-    opt.value = i; opt.textContent = `Ziel ${i+1}: ${t}`;
-    setGoalSelect.appendChild(opt);
-  });
-  setGoalSelect.value = String(currentIdx);
-}
-setGoalBtn.onclick = async ()=>{
-  if(!currentKid) return;
-  const idx = idxClamp(+setGoalSelect.value||0);
-  await setActiveGoal(currentKid.name, idx);
-  openKid(currentKid.name);
-  renderAbschluesse();
-};
-
-/* Archiv: Struktur
-   /ziele/archiv/{Kind}/{entryId}:
-     { goalIndex, goalTitle, startedAt, endedAt|null, completedAt|null }
-   Im Kind: currentAssignmentId = offene Zuordnung
-*/
-async function ensureAssignmentIfMissing(name){
-  const s = await get(ref(db, `kinder/${name}`));
-  if (!s.exists()) return;
-  const v = s.val()||{};
-  if (v.currentAssignmentId) return;
-  const idx = idxClamp(v.activeGoalIndex ?? 0);
-  const entryRef = push(ref(db, `ziele/archiv/${name}`));
-  const entryId = entryRef.key;
-  await set(entryRef, {
-    goalIndex: idx,
-    goalTitle: GOALS[idx] || "—",
-    startedAt: ts(),
-    endedAt: null,
-    completedAt: (v.progress>=100)?ts():null
-  });
-  await update(ref(db, `kinder/${name}`), { currentAssignmentId: entryId });
+/* Navigation */
+backBtn.onclick = ()=>toggleViews(true);
+function toggleViews(showList){
+  listView.classList.toggle('hidden', !showList);
+  detailView.classList.toggle('hidden', showList);
 }
 
-async function markArchiveCompleted(name){
-  const s = await get(ref(db, `kinder/${name}`));
-  if (!s.exists()) return;
-  const v = s.val()||{};
-  if (!v.currentAssignmentId) return;
-  await update(ref(db, `ziele/archiv/${name}/${v.currentAssignmentId}`), { completedAt: ts() });
-}
-
-async function closeCurrentAssignment(name){
-  const s = await get(ref(db, `kinder/${name}`));
-  if (!s.exists()) return;
-  const v = s.val()||{};
-  if (!v.currentAssignmentId) return;
-  await update(ref(db, `ziele/archiv/${name}/${v.currentAssignmentId}`), { endedAt: ts() });
-}
-
-async function startNewAssignment(name, goalIndex){
-  const entryRef = push(ref(db, `ziele/archiv/${name}`));
-  const entryId = entryRef.key;
-  await set(entryRef, {
-    goalIndex: goalIndex,
-    goalTitle: GOALS[goalIndex] || "—",
-    startedAt: ts(),
-    endedAt: null,
-    completedAt: null
-  });
-  await update(ref(db, `kinder/${name}`), { currentAssignmentId: entryId });
-}
-
-/* Aktives Ziel setzen + Archiv pflegen */
-async function setActiveGoal(name, targetIdx){
-  const s = await get(ref(db, `kinder/${name}`));
-  if (!s.exists()) return;
-  const v = s.val()||{};
-  if (v.currentAssignmentId) await closeCurrentAssignment(name);
-  await update(ref(db, `kinder/${name}`), {
-    activeGoalIndex: targetIdx,
-    progress: 0,
-    lastRewardedMilestone: 0,
-    needsGoalAssignment: false
-  });
-  await startNewAssignment(name, targetIdx);
-}
-
-/* Archiv-UI */
-function renderArchKidSelect(){
-  archKidSelect.innerHTML = "";
-  const optAll = document.createElement('option'); optAll.value="*"; optAll.textContent="Alle Kinder";
-  archKidSelect.appendChild(optAll);
-  KIDS.forEach(k=>{
-    const o = document.createElement('option');
-    o.value = k.name; o.textContent = k.name;
-    archKidSelect.appendChild(o);
-  });
-  archKidSelect.onchange = ()=>renderArchive(archKidSelect.value==="*" ? null : archKidSelect.value);
-}
-async function renderArchive(filterName=null){
-  const nameFilter = filterName ?? (currentKid?.name ?? null);
-  archKidSelect.value = nameFilter ? nameFilter : "*";
-
-  archBody.innerHTML = "";
-  if (nameFilter){
-    const s = await get(ref(db, `ziele/archiv/${nameFilter}`));
-    if (!s.exists()) return;
-    const rows = [];
-    s.forEach(ch=>{
-      const v = ch.val()||{};
-      rows.push([nameFilter, v.goalIndex, v.goalTitle, v.startedAt, v.endedAt, v.completedAt]);
-    });
-    rows.sort((a,b)=> new Date(b[3]) - new Date(a[3]));
-    rows.forEach(r=>appendArchRow(...r));
-  } else {
-    for (const k of KIDS){
-      const s = await get(ref(db, `ziele/archiv/${k.name}`));
-      if (!s.exists()) continue;
-      const rows = [];
-      s.forEach(ch=>{
-        const v = ch.val()||{};
-        rows.push([k.name, v.goalIndex, v.goalTitle, v.startedAt, v.endedAt, v.completedAt]);
-      });
-      rows.sort((a,b)=> new Date(b[3]) - new Date(a[3]));
-      rows.forEach(r=>appendArchRow(...r));
-    }
-  }
-}
-function appendArchRow(kind, idx, title, startedAt, endedAt, completedAt){
-  const tr = document.createElement('tr');
-  tr.innerHTML = `
-    <td>${kind}</td>
-    <td>Ziel ${Number(idx)+1}</td>
-    <td title="${startedAt||''}">${fmt(startedAt)||'—'}</td>
-    <td title="${endedAt||''}">${fmt(endedAt)||'—'}</td>
-    <td title="${completedAt||''}">${fmt(completedAt)||'—'}</td>`;
-  archBody.appendChild(tr);
-}
-
-/* Ziele verwalten UI */
-function renderGoalsManager(){
-  goalsList.innerHTML = "";
-  GOALS.forEach((txt,i)=>{
-    const row = document.createElement('div');
-    row.className="goal-item";
-    const input = document.createElement('input');
-    input.value = txt;
-    input.oninput = e=>{ GOALS[i] = e.target.value; };
-    const up = document.createElement('button'); up.className='btn'; up.textContent='↑';
-    up.onclick = ()=>{ if(i>0){ [GOALS[i-1],GOALS[i]]=[GOALS[i],GOALS[i-1]]; renderGoalsManager(); renderGoalDropdowns(); }};
-    const down = document.createElement('button'); down.className='btn'; down.textContent='↓';
-    down.onclick = ()=>{ if(i<GOALS.length-1){ [GOALS[i+1],GOALS[i]]=[GOALS[i],GOALS[i+1]]; renderGoalsManager(); renderGoalDropdowns(); }};
-    const del = document.createElement('button'); del.className='btn danger'; del.textContent='Löschen';
-    del.onclick = ()=>{ GOALS.splice(i,1); renderGoalsManager(); renderGoalDropdowns(); };
-    row.appendChild(input); row.appendChild(up); row.appendChild(down); row.appendChild(del);
-    goalsList.appendChild(row);
-  });
-}
-addGoal.onclick = ()=>{ const t = (newGoalText.value||"").trim(); if(!t) return; GOALS.push(t); newGoalText.value=""; renderGoalsManager(); renderGoalDropdowns(); };
-saveGoals.onclick = async ()=>{
-  await set(ref(db,"ziele/meta"), GOALS); // als Array speichern
-  alert("Ziele gespeichert.");
-  renderGoalDropdowns();
-  if (currentKid) openKid(currentKid.name);
-};
-
-/* Erstinitialisierung: offene Archiv-Zuordnung für Kinder ohne currentAssignmentId */
-window.addEventListener('load', async ()=>{
-  const s = await get(ref(db,"kinder"));
-  if (s.exists()){
-    const ops = [];
-    s.forEach(ch=>{
-      const name = ch.key; const v = ch.val()||{};
-      if (v.farbe === undefined) return;
-      if (!v.currentAssignmentId){
-        ops.push((async ()=>{
-          const idx = idxClamp(v.activeGoalIndex ?? 0);
-          const entryRef = push(ref(db, `ziele/archiv/${name}`));
-          const entryId = entryRef.key;
-          await set(entryRef, {
-            goalIndex: idx,
-            goalTitle: GOALS[idx] || "—",
-            startedAt: ts(),
-            endedAt: null,
-            completedAt: (v.progress>=100)?ts():null
-          });
-          await update(ref(db, `kinder/${name}`), { currentAssignmentId: entryId });
-        })());
-      }
-    });
-    await Promise.all(ops);
-  }
-});
+/* Utils */
+function clampStamps(x){ x = Number(x)||0; return Math.max(0, Math.min(10, Math.floor(x))); }
+function clampIndex(i){ i = Number(i)||0; return Math.max(0, Math.min((GOALS.length?GOALS.length:1)-1, Math.floor(i))); }
 </script>
 </body>
 </html>
