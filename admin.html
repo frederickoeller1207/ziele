@@ -1,158 +1,593 @@
-<!-- admin.html (Adminansicht) -->
 <!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Zielkarte – Admin</title>
-  <link href="https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@400;600&display=swap" rel="stylesheet">
-  <style>
-    :root{--bg:#f4f4f6;--card:#fff;--txt:#111827;--muted:#6b7280;--border:#e5e7eb;--accent:#007aff;--rad:14px;--shadow:0 4px 12px rgba(0,0,0,.08)}
-    body{font-family:'SF Pro Display',system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--txt);margin:0;padding:16px}
-    h1{font-size:22px;margin:0 0 16px;text-align:center;color:var(--accent);font-weight:800}
-    .grid{display:grid;grid-template-columns:340px 1fr;gap:16px;align-items:start}
-    .card{background:var(--card);border:1px solid var(--border);border-radius:var(--rad);box-shadow:var(--shadow);padding:14px}
-    .section-title{font-weight:800;margin:0 0 10px}
-    .muted{color:var(--muted);font-size:12px}
-    .search{width:100%;padding:10px;border:1px solid var(--border);border-radius:12px}
-    .list{display:flex;flex-direction:column;gap:8px;margin-top:10px;max-height:72vh;overflow:auto}
-    .kid{display:flex;justify-content:space-between;align-items:center;padding:10px;border:1px solid var(--border);border-radius:12px;background:#fff;cursor:pointer}
-    .kid:hover{background:#f9fafb}
-    .pill{padding:6px 10px;border:1px solid var(--border);border-radius:999px;background:#fafafa;font-size:12px}
-    .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-    .select,.input,.textarea{padding:10px;border:1px solid var(--border);border-radius:12px;background:#fff;width:100%}
-    .textarea{min-height:84px;resize:vertical}
-    .btn{background:#fff;border:1px solid var(--border);border-radius:12px;padding:10px 14px;cursor:pointer;font-weight:800}
-    .btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
-    .btn:active{transform:scale(0.99)}
-    .divider{height:1px;background:var(--border);margin:12px 0}
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Zielkarte – Admin (v1)</title>
 
-    .circles{display:grid;grid-template-columns:repeat(10, 1fr);gap:8px;margin-top:12px}
-    .dot{width:100%;aspect-ratio:1/1;border-radius:999px;border:2px solid var(--border);background:#fff;cursor:pointer}
-    .dot.on{background:#22c55e;border-color:#22c55e}
-    .dotLabel{display:flex;justify-content:space-between;align-items:center;margin-top:6px}
-    .warn{background:#fff7ed;border:1px solid #fed7aa;padding:10px;border-radius:12px}
+  <link href="https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@400;600;800&display=swap" rel="stylesheet">
+
+  <style>
+    :root{
+      --bg:#f6f7fb; --card:#ffffff; --txt:#111827; --muted:#6b7280;
+      --border:#e5e7eb; --accent:#007aff; --radius:16px;
+      --shadow:0 6px 18px rgba(0,0,0,.08); --green:#22c55e;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; padding:14px; background:var(--bg); color:var(--txt);
+      font-family:'SF Pro Display',system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+    }
+    h1{margin:6px 0 14px; text-align:center; font-size:22px; font-weight:900; color:var(--accent)}
+    .card{
+      background:var(--card); border:1px solid var(--border); border-radius:var(--radius);
+      box-shadow:var(--shadow); padding:12px; margin-bottom:12px;
+    }
+    .row{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
+    .spacer{flex:1}
+    .muted{color:var(--muted); font-size:12px; font-weight:700}
+    .pill{
+      padding:6px 10px; border:1px solid var(--border); border-radius:999px;
+      background:#fafafa; font-size:12px; font-weight:900;
+    }
+    input, select, textarea{
+      width:100%; padding:12px 14px; font-size:16px;
+      border:1px solid var(--border); border-radius:14px; background:#fff; outline:none;
+    }
+    textarea{min-height:150px; resize:vertical}
+    button{
+      border:1px solid var(--border); background:#fff; border-radius:14px;
+      padding:12px 14px; font-weight:900; cursor:pointer;
+    }
+    button.primary{background:var(--accent); border-color:var(--accent); color:#fff}
+    button:active{transform:scale(.99)}
+    .list{display:flex; flex-direction:column; gap:10px; margin-top:10px}
+    .kid{
+      border:1px solid var(--border); border-radius:16px; background:#fff;
+      padding:12px; display:flex; justify-content:space-between; align-items:center;
+      cursor:pointer;
+    }
+    .kidName{font-weight:900; font-size:16px}
+    .kidMeta{font-size:12px; color:var(--muted); font-weight:800}
+    .divider{height:1px; background:var(--border); margin:12px 0}
+
+    .overlay{
+      position:fixed; inset:0; background:rgba(0,0,0,.35);
+      display:none; align-items:flex-end; justify-content:center; padding:10px;
+    }
+    .overlay.show{display:flex}
+    .panel{
+      width:100%; max-width:760px; background:#fff; border-radius:20px;
+      border:1px solid var(--border); box-shadow:0 24px 60px rgba(0,0,0,.28);
+      padding:12px;
+    }
+    .panelTitle{font-weight:950; font-size:18px}
+    .panelSub{color:var(--muted); font-size:12px; font-weight:800; margin-top:2px}
+
+    .circles{display:grid; grid-template-columns:repeat(10,1fr); gap:8px; margin-top:10px}
+    .dot{
+      width:100%; aspect-ratio:1/1; border-radius:999px; border:2px solid var(--border);
+      background:#fff; cursor:pointer; user-select:none; -webkit-tap-highlight-color: transparent;
+    }
+    .dot.on{background:var(--green); border-color:var(--green)}
+
+    .warn{
+      background:#fff7ed; border:1px solid #fed7aa; border-radius:14px; padding:10px;
+      color:#9a3412; font-size:12px; font-weight:800;
+    }
+    .debug{
+      background:#0b1220; color:#e5e7eb; border-radius:14px; padding:10px;
+      font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;
+      font-size:12px; overflow:auto; white-space:pre-wrap;
+    }
   </style>
 </head>
-<body>
-<h1>Zielkarte – Admin</h1>
 
-<div class="grid">
-  <!-- Kinder -->
+<body>
+  <h1>Zielkarte – Admin</h1>
+
   <div class="card">
-    <div class="section-title">Kinder (nur mit Farbe)</div>
-    <input id="search" class="search" placeholder="Suche nach Namen…">
-    <div id="kidList" class="list"></div>
+    <div class="row">
+      <div>
+        <div style="font-weight:950;">Neuer Zielkatalog (v1)</div>
+        <div class="muted">Speicherort: <b>/zielkarte/v1/catalog</b> (JSON). Alte Ziele bleiben unangetastet.</div>
+      </div>
+      <div class="spacer"></div>
+      <button id="btnTemplate">Template</button>
+      <button id="btnSaveCatalog" class="primary">Katalog speichern</button>
+    </div>
+
+    <textarea id="catalogTextarea" style="margin-top:10px" placeholder="JSON Katalog …"></textarea>
+    <div id="catalogInfo" class="muted" style="margin-top:8px">—</div>
   </div>
 
-  <!-- Details -->
   <div class="card">
-    <div class="section-title">Ausgewähltes Kind</div>
     <div class="row">
-      <div id="kidName" class="pill">—</div>
-      <div id="weekTag" class="pill">Woche —</div>
-      <div style="flex:1"></div>
-      <div id="stampsTag" class="pill">Stempel: —/10</div>
+      <input id="search" placeholder="Suche nach Namen …">
+      <span id="pillWeek" class="pill">Woche: —</span>
+      <span id="pillKids" class="pill">Kinder: —</span>
     </div>
 
-    <div class="divider"></div>
-
-    <div class="section-title">Aktuelles Ziel</div>
-    <select id="goalSelect" class="select"></select>
-    <div class="row" style="margin-top:10px">
-      <button id="setGoalBtn" class="btn primary">Ziel setzen</button>
-      <span class="muted">Setzt Stempel zurück auf 0.</span>
+    <div id="kidsEmpty" class="warn" style="display:none; margin-top:10px">
+      Es sind keine Namen unter <b>/kinder</b> vorhanden.
     </div>
 
-    <div class="divider"></div>
+    <div id="kidList" class="list"></div>
 
-    <div class="section-title">Stempelkarte</div>
-    <div class="muted">Klicke Kreise, um den Stand zu setzen (0–10).</div>
-    <div id="circles" class="circles" aria-label="Stempelkarte"></div>
-    <div class="dotLabel">
-      <div class="muted">Klick auf Kreis #n → setzt Stempel auf n</div>
+    <div class="divider"></div>
+    <div class="muted">Debug:</div>
+    <div id="debug" class="debug" style="margin-top:6px">—</div>
+  </div>
+
+  <div id="overlay" class="overlay" aria-hidden="true">
+    <div class="panel">
       <div class="row">
-        <button id="minus" class="btn">−</button>
-        <button id="plus" class="btn">+</button>
-        <button id="saveStamps" class="btn primary">Speichern</button>
+        <div>
+          <div id="detailName" class="panelTitle">—</div>
+          <div id="detailMeta" class="panelSub">—</div>
+        </div>
+        <div class="spacer"></div>
+        <button id="btnClose">Schließen</button>
+      </div>
+
+      <div class="divider"></div>
+
+      <div style="font-weight:950;">Aktuelles Ziel</div>
+      <select id="goalSelect" style="margin-top:8px"></select>
+      <div class="row" style="margin-top:10px">
+        <button id="btnSetGoal" class="primary">Ziel setzen</button>
+        <span class="muted">Setzt Stempel=0 und leert Notiz.</span>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="row">
+        <div style="font-weight:950;">Stempelkarte</div>
+        <div class="spacer"></div>
+        <span id="stampsPill" class="pill">Stempel: —/10</span>
+      </div>
+      <div class="muted">Tippe Kreis #n, um den Stand zu setzen.</div>
+      <div id="circles" class="circles"></div>
+      <div class="row" style="margin-top:10px">
+        <button id="btnMinus">−</button>
+        <button id="btnPlus">+</button>
+        <button id="btnSaveStamps" class="primary">Stempel speichern</button>
+      </div>
+
+      <div class="divider"></div>
+
+      <div style="font-weight:950;">Notiz (nur diese Woche)</div>
+      <div class="muted">Freitext. Wird beim Wochenwechsel automatisch geleert, sobald du das Kind im Admin öffnest.</div>
+      <textarea id="note" style="margin-top:8px" placeholder="Kurze Notiz …"></textarea>
+      <div class="row" style="margin-top:10px">
+        <button id="btnSaveNote" class="primary">Notiz speichern</button>
+        <button id="btnClearNote">Leeren</button>
       </div>
     </div>
-
-    <div class="divider"></div>
-
-    <div class="section-title">Notiz (nur diese Woche)</div>
-    <div class="warn muted" style="margin-bottom:10px">
-      Die Notiz wird automatisch geleert, sobald eine neue Kalenderwoche beginnt (beim Öffnen im Admin).
-    </div>
-    <textarea id="note" class="textarea" placeholder="Kurze Notiz…"></textarea>
-    <div class="row" style="margin-top:10px">
-      <button id="saveNote" class="btn primary">Notiz speichern</button>
-      <button id="clearNote" class="btn">Notiz leeren</button>
-    </div>
   </div>
-</div>
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
-import { getDatabase, ref, get, onValue, update, set } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-database.js";
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
+    import { getDatabase, ref, get, set, update, onValue } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-database.js";
 
-/* Firebase (punkte-45c20) */
-const app = initializeApp({
-  apiKey: "AIzaSyAdPN2duh89Fx5rmYlFshdf0juhYNX_7fg",
-  authDomain: "punkte-45c20.firebaseapp.com",
-  databaseURL: "https://punkte-45c20-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId: "punkte-45c20",
-  storageBucket: "punkte-45c20.appspot.com",
-  messagingSenderId: "931713539549",
-  appId: "1:931713539549:web:e348bf38369639f1906a34"
-});
-const db = getDatabase(app);
+    // Firebase (wie vorher)
+    const app = initializeApp({
+      apiKey: "AIzaSyAdPN2duh89Fx5rmYlFshdf0juhYNX_7fg",
+      authDomain: "punkte-45c20.firebaseapp.com",
+      databaseURL: "https://punkte-45c20-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId: "punkte-45c20",
+      storageBucket: "punkte-45c20.appspot.com",
+      messagingSenderId: "931713539549",
+      appId: "1:931713539549:web:e348bf38369639f1906a34"
+    });
+    const db = getDatabase(app);
 
-/* DOM */
-const search = document.getElementById('search');
-const kidList = document.getElementById('kidList');
-const kidNameEl = document.getElementById('kidName');
-const weekTagEl = document.getElementById('weekTag');
-const stampsTagEl = document.getElementById('stampsTag');
+    // Paths (neu)
+    const PATH_NAMES = "kinder"; // nur Namen/Keys
+    const PATH_CATALOG = "zielkarte/v1/catalog";
+    const PATH_CHILDREN = "zielkarte/v1/children";
 
-const goalSelect = document.getElementById('goalSelect');
-const setGoalBtn = document.getElementById('setGoalBtn');
+    // DOM
+    const catalogTextarea = document.getElementById("catalogTextarea");
+    const catalogInfo = document.getElementById("catalogInfo");
+    const btnTemplate = document.getElementById("btnTemplate");
+    const btnSaveCatalog = document.getElementById("btnSaveCatalog");
 
-const circlesEl = document.getElementById('circles');
-const minusBtn = document.getElementById('minus');
-const plusBtn = document.getElementById('plus');
-const saveStampsBtn = document.getElementById('saveStamps');
+    const search = document.getElementById("search");
+    const pillWeek = document.getElementById("pillWeek");
+    const pillKids = document.getElementById("pillKids");
+    const kidsEmpty = document.getElementById("kidsEmpty");
+    const kidList = document.getElementById("kidList");
+    const debugEl = document.getElementById("debug");
 
-const noteEl = document.getElementById('note');
-const saveNoteBtn = document.getElementById('saveNote');
-const clearNoteBtn = document.getElementById('clearNote');
+    const overlay = document.getElementById("overlay");
+    const btnClose = document.getElementById("btnClose");
+    const detailName = document.getElementById("detailName");
+    const detailMeta = document.getElementById("detailMeta");
 
-/* State */
-let GOALS = [];
-let KIDS = [];
-let currentKidName = null;
-let draftStamps = 0;
+    const goalSelect = document.getElementById("goalSelect");
+    const btnSetGoal = document.getElementById("btnSetGoal");
 
-/* Week helpers (ISO week) */
-function isoWeekString(d=new Date()){
-  // ISO week date weeks start on Monday
-  const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-  const dayNum = date.getUTCDay() || 7;
-  date.setUTCDate(date.getUTCDate() + 4 - dayNum);
-  const yearStart = new Date(Date.UTC(date.getUTCFullYear(),0,1));
-  const weekNo = Math.ceil((((date - yearStart) / 86400000) + 1) / 7);
-  const year = date.getUTCFullYear();
-  return `${year}-W${String(weekNo).padStart(2,'0')}`;
-}
-const CURRENT_WEEK = isoWeekString();
-weekTagEl.textContent = `Woche ${CURRENT_WEEK}`;
+    const circlesEl = document.getElementById("circles");
+    const stampsPill = document.getElementById("stampsPill");
+    const btnMinus = document.getElementById("btnMinus");
+    const btnPlus = document.getElementById("btnPlus");
+    const btnSaveStamps = document.getElementById("btnSaveStamps");
 
-/* Utils */
-const clampStamps = x => Math.max(0, Math.min(10, Math.floor(Number(x)||0)));
-const clampIndex = i => Math.max(0, Math.min((GOALS.length?GOALS.length:1)-1, Math.floor(Number(i)||0)));
+    const noteEl = document.getElementById("note");
+    const btnSaveNote = document.getElementById("btnSaveNote");
+    const btnClearNote = document.getElementById("btnClearNote");
 
-/* Ziele laden */
-async function loadGoals(){
-  const s = await get(ref(db,"ziele/meta"));
-  const val = s.exists() ? s.val() : null;
-  if (Array.isArray(val)) GOALS = val.filter(x => x
+    // State
+    let NAMES = [];                 // [ "Anna", "Ben", ... ] aus /kinder keys
+    let catalog = null;             // { categories:[], goals:[] }
+    let childStates = {};           // { "Anna": {activeGoalId, stamps, noteText, noteWeek}, ... }
+
+    let currentName = null;
+    let draftStamps = 0;
+
+    // Utils
+    const clampStamps = (x) => Math.max(0, Math.min(10, Math.floor(Number(x) || 0)));
+    const escapeHtml = (s) => String(s).replace(/[&<>"']/g, m => ({
+      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+    }[m]));
+
+    function isoWeekString(date = new Date()){
+      const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+      const dayNum = d.getUTCDay() || 7;
+      d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+      const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+      const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+      return `${d.getUTCFullYear()}-W${String(weekNo).padStart(2,"0")}`;
+    }
+    const CURRENT_WEEK = isoWeekString();
+    pillWeek.textContent = `Woche: ${CURRENT_WEEK}`;
+
+    function showOverlay(){ overlay.classList.add("show"); overlay.setAttribute("aria-hidden","false"); }
+    function hideOverlay(){ overlay.classList.remove("show"); overlay.setAttribute("aria-hidden","true"); currentName = null; }
+    btnClose.addEventListener("click", hideOverlay);
+    overlay.addEventListener("click", (e)=>{ if(e.target === overlay) hideOverlay(); });
+
+    function getGoalById(id){
+      if(!catalog?.goals?.length) return null;
+      return catalog.goals.find(g => g.id === id) || null;
+    }
+
+    function firstGoalId(){
+      return catalog?.goals?.[0]?.id || null;
+    }
+
+    function validateCatalog(obj){
+      if(!obj || typeof obj !== "object") return "Katalog ist kein Objekt.";
+      if(!Array.isArray(obj.categories)) return "Katalog.categories muss ein Array sein.";
+      if(!Array.isArray(obj.goals)) return "Katalog.goals muss ein Array sein.";
+      for(const c of obj.categories){
+        if(!c || typeof c !== "object") return "Kategorie-Eintrag ungültig.";
+        if(!c.id || !c.title) return "Kategorie braucht id und title.";
+      }
+      for(const g of obj.goals){
+        if(!g || typeof g !== "object") return "Ziel-Eintrag ungültig.";
+        if(!g.id || !g.categoryId || !g.text) return "Ziel braucht id, categoryId, text.";
+      }
+      const catIds = new Set(obj.categories.map(c=>c.id));
+      for(const g of obj.goals){
+        if(!catIds.has(g.categoryId)) return `Ziel ${g.id} verweist auf unbekannte categoryId ${g.categoryId}.`;
+      }
+      return null;
+    }
+
+    function renderKidList(){
+      const q = (search.value || "").toLowerCase();
+      const filtered = NAMES.filter(n => n.toLowerCase().includes(q)).sort((a,b)=>a.localeCompare(b,'de'));
+
+      kidList.innerHTML = "";
+      if(filtered.length === 0){
+        kidsEmpty.style.display = NAMES.length ? "none" : "block";
+        if(NAMES.length){
+          const div = document.createElement("div");
+          div.className = "warn";
+          div.textContent = "Keine Treffer für die Suche.";
+          kidList.appendChild(div);
+        }
+        return;
+      }
+      kidsEmpty.style.display = "none";
+
+      for(const name of filtered){
+        const st = childStates[name] || null;
+        const stamps = clampStamps(st?.stamps ?? 0);
+        const goal = st?.activeGoalId ? getGoalById(st.activeGoalId) : null;
+
+        const el = document.createElement("div");
+        el.className = "kid";
+        el.innerHTML = `
+          <div>
+            <div class="kidName">${escapeHtml(name)}</div>
+            <div class="kidMeta">${stamps}/10 • ${escapeHtml(goal?.text || "— kein Ziel —")}</div>
+          </div>
+          <div class="kidMeta">›</div>
+        `;
+        el.addEventListener("click", ()=>openKid(name));
+        kidList.appendChild(el);
+      }
+
+      pillKids.textContent = `Kinder: ${NAMES.length}`;
+    }
+
+    search.addEventListener("input", renderKidList);
+
+    function renderGoalSelect(){
+      goalSelect.innerHTML = "";
+      if(!catalog?.categories?.length || !catalog?.goals?.length){
+        const opt = document.createElement("option");
+        opt.value = "";
+        opt.textContent = "— Kein Katalog —";
+        goalSelect.appendChild(opt);
+        goalSelect.disabled = true;
+        btnSetGoal.disabled = true;
+        return;
+      }
+      goalSelect.disabled = false;
+      btnSetGoal.disabled = false;
+
+      // optgroups by category
+      for(const cat of catalog.categories){
+        const group = document.createElement("optgroup");
+        group.label = cat.title;
+        const goals = catalog.goals.filter(g => g.categoryId === cat.id);
+        for(const g of goals){
+          const opt = document.createElement("option");
+          opt.value = g.id;
+          opt.textContent = g.text;
+          group.appendChild(opt);
+        }
+        goalSelect.appendChild(group);
+      }
+
+      const st = currentName ? childStates[currentName] : null;
+      if(st?.activeGoalId){
+        goalSelect.value = st.activeGoalId;
+      } else {
+        goalSelect.value = firstGoalId() || "";
+      }
+    }
+
+    function renderCircles(stamps){
+      circlesEl.innerHTML = "";
+      for(let i=1;i<=10;i++){
+        const dot = document.createElement("div");
+        dot.className = "dot" + (i <= stamps ? " on" : "");
+        dot.title = `Setze auf ${i}`;
+        dot.addEventListener("click", ()=>{
+          draftStamps = i;
+          stampsPill.textContent = `Stempel: ${draftStamps}/10`;
+          renderCircles(draftStamps);
+        });
+        circlesEl.appendChild(dot);
+      }
+    }
+
+    async function ensureChildStateExists(name){
+      const st = childStates[name];
+      if(st) return st;
+
+      const goalId = firstGoalId();
+      const init = {
+        activeGoalId: goalId,
+        stamps: 0,
+        noteText: "",
+        noteWeek: CURRENT_WEEK
+      };
+      await set(ref(db, `${PATH_CHILDREN}/${name}`), init);
+      childStates[name] = init;
+      return init;
+    }
+
+    async function ensureNoteCurrentWeek(name, st){
+      if((st.noteWeek || "") === CURRENT_WEEK) return st;
+      const patch = { noteText: "", noteWeek: CURRENT_WEEK };
+      await update(ref(db, `${PATH_CHILDREN}/${name}`), patch);
+      childStates[name] = { ...st, ...patch };
+      return childStates[name];
+    }
+
+    async function openKid(name){
+      currentName = name;
+      detailName.textContent = name;
+
+      let st = await ensureChildStateExists(name);
+      st = await ensureNoteCurrentWeek(name, st);
+
+      draftStamps = clampStamps(st.stamps ?? 0);
+      stampsPill.textContent = `Stempel: ${draftStamps}/10`;
+      renderCircles(draftStamps);
+
+      renderGoalSelect();
+
+      const goal = st.activeGoalId ? getGoalById(st.activeGoalId) : null;
+      detailMeta.textContent = `${draftStamps}/10 • ${CURRENT_WEEK} • ${goal?.text || "— kein Ziel —"}`;
+
+      noteEl.value = st.noteText || "";
+
+      showOverlay();
+    }
+
+    btnMinus.addEventListener("click", ()=>{
+      if(!currentName) return;
+      draftStamps = clampStamps(draftStamps - 1);
+      stampsPill.textContent = `Stempel: ${draftStamps}/10`;
+      renderCircles(draftStamps);
+    });
+
+    btnPlus.addEventListener("click", ()=>{
+      if(!currentName) return;
+      draftStamps = clampStamps(draftStamps + 1);
+      stampsPill.textContent = `Stempel: ${draftStamps}/10`;
+      renderCircles(draftStamps);
+    });
+
+    btnSaveStamps.addEventListener("click", async ()=>{
+      if(!currentName) return;
+      await update(ref(db, `${PATH_CHILDREN}/${currentName}`), { stamps: draftStamps });
+      const st = childStates[currentName] || {};
+      childStates[currentName] = { ...st, stamps: draftStamps };
+      const goal = childStates[currentName].activeGoalId ? getGoalById(childStates[currentName].activeGoalId) : null;
+      detailMeta.textContent = `${draftStamps}/10 • ${CURRENT_WEEK} • ${goal?.text || "— kein Ziel —"}`;
+      renderKidList();
+    });
+
+    btnSetGoal.addEventListener("click", async ()=>{
+      if(!currentName) return;
+      if(!catalog?.goals?.length){
+        alert("Kein Zielkatalog vorhanden. Bitte zuerst Katalog speichern.");
+        return;
+      }
+      const goalId = goalSelect.value || firstGoalId();
+      if(!goalId){
+        alert("Kein Ziel auswählbar.");
+        return;
+      }
+
+      const patch = { activeGoalId: goalId, stamps: 0, noteText: "", noteWeek: CURRENT_WEEK };
+      await update(ref(db, `${PATH_CHILDREN}/${currentName}`), patch);
+      childStates[currentName] = { ...(childStates[currentName] || {}), ...patch };
+
+      draftStamps = 0;
+      renderCircles(0);
+      stampsPill.textContent = "Stempel: 0/10";
+      noteEl.value = "";
+
+      const goal = getGoalById(goalId);
+      detailMeta.textContent = `0/10 • ${CURRENT_WEEK} • ${goal?.text || "— kein Ziel —"}`;
+      renderKidList();
+    });
+
+    btnSaveNote.addEventListener("click", async ()=>{
+      if(!currentName) return;
+      const text = (noteEl.value || "").trim();
+      const patch = { noteText: text, noteWeek: CURRENT_WEEK };
+      await update(ref(db, `${PATH_CHILDREN}/${currentName}`), patch);
+      childStates[currentName] = { ...(childStates[currentName] || {}), ...patch };
+      renderKidList();
+    });
+
+    btnClearNote.addEventListener("click", async ()=>{
+      noteEl.value = "";
+      if(!currentName) return;
+      const patch = { noteText: "", noteWeek: CURRENT_WEEK };
+      await update(ref(db, `${PATH_CHILDREN}/${currentName}`), patch);
+      childStates[currentName] = { ...(childStates[currentName] || {}), ...patch };
+      renderKidList();
+    });
+
+    // Catalog template
+    btnTemplate.addEventListener("click", ()=>{
+      const tpl = {
+        categories: [
+          { id: "A", title: "Soziales Miteinander" },
+          { id: "B", title: "Kommunikation & Zuhören" },
+          { id: "C", title: "Regeln & Orientierung" },
+          { id: "D", title: "Selbstständigkeit & Organisation" },
+          { id: "E", title: "Konflikte & Verantwortung" }
+        ],
+        goals: [
+          { id: "A_freundlich", categoryId: "A", text: "Ich bin freundlich zu anderen." },
+          { id: "B_melden", categoryId: "B", text: "Ich melde mich, bevor ich spreche." },
+          { id: "D_jacke_schuhe", categoryId: "D", text: "Ich hänge meine Jacke richtig auf und stelle meine Schuhe an den Rand." }
+        ]
+      };
+      catalogTextarea.value = JSON.stringify(tpl, null, 2);
+      catalogInfo.textContent = "Template eingefügt (noch nicht gespeichert).";
+    });
+
+    btnSaveCatalog.addEventListener("click", async ()=>{
+      let obj = null;
+      try{
+        obj = JSON.parse(catalogTextarea.value || "null");
+      } catch(e){
+        alert("JSON Fehler: " + (e?.message || e));
+        return;
+      }
+      const err = validateCatalog(obj);
+      if(err){
+        alert("Katalog ungültig: " + err);
+        return;
+      }
+      await set(ref(db, PATH_CATALOG), obj);
+      catalog = obj;
+      catalogInfo.textContent = `Gespeichert. Kategorien: ${catalog.categories.length}, Ziele: ${catalog.goals.length}`;
+      renderGoalSelect();
+      renderKidList();
+    });
+
+    // Live: Names from old path (keys only)
+    onValue(ref(db, PATH_NAMES), (snap)=>{
+      const arr = [];
+      if(snap.exists()){
+        snap.forEach(ch => arr.push(ch.key));
+      }
+      NAMES = arr;
+      pillKids.textContent = `Kinder: ${NAMES.length}`;
+      renderKidList();
+      debugEl.textContent =
+        `names: /${PATH_NAMES} -> ${NAMES.length}\n` +
+        `catalog: /${PATH_CATALOG} -> ${catalog?.goals?.length ?? 0} goals\n` +
+        `states: /${PATH_CHILDREN} -> live\n` +
+        `week: ${CURRENT_WEEK}`;
+    }, (err)=>{
+      debugEl.textContent = "names listener error:\n" + (err?.message || String(err));
+    });
+
+    // Live: New child states
+    onValue(ref(db, PATH_CHILDREN), (snap)=>{
+      const map = {};
+      if(snap.exists()){
+        snap.forEach(ch => map[ch.key] = ch.val() || {});
+      }
+      childStates = map;
+      renderKidList();
+    }, (err)=>{
+      debugEl.textContent = "children listener error:\n" + (err?.message || String(err));
+    });
+
+    // Live: Catalog
+    onValue(ref(db, PATH_CATALOG), (snap)=>{
+      catalog = snap.exists() ? snap.val() : null;
+      if(catalog){
+        catalogTextarea.value = JSON.stringify(catalog, null, 2);
+        catalogInfo.textContent = `Geladen. Kategorien: ${catalog.categories?.length ?? 0}, Ziele: ${catalog.goals?.length ?? 0}`;
+      } else {
+        catalogInfo.textContent = "Kein Katalog vorhanden. Nutze Template oder füge JSON ein und speichere.";
+        if(!catalogTextarea.value.trim()) catalogTextarea.value = "";
+      }
+      renderGoalSelect();
+      renderKidList();
+      debugEl.textContent =
+        `names: /${PATH_NAMES} -> ${NAMES.length}\n` +
+        `catalog: /${PATH_CATALOG} -> ${catalog?.goals?.length ?? 0} goals\n` +
+        `states: /${PATH_CHILDREN} -> ${Object.keys(childStates).length}\n` +
+        `week: ${CURRENT_WEEK}`;
+    }, (err)=>{
+      debugEl.textContent = "catalog listener error:\n" + (err?.message || String(err));
+    });
+
+    // Initial load helper (optional)
+    (async function init(){
+      try{
+        // if catalog not loaded yet, try once
+        const c = await get(ref(db, PATH_CATALOG));
+        if(c.exists()){
+          catalog = c.val();
+          catalogTextarea.value = JSON.stringify(catalog, null, 2);
+          catalogInfo.textContent = `Geladen. Kategorien: ${catalog.categories?.length ?? 0}, Ziele: ${catalog.goals?.length ?? 0}`;
+        } else {
+          catalogInfo.textContent = "Kein Katalog vorhanden. Nutze Template oder füge JSON ein und speichere.";
+        }
+        renderGoalSelect();
+      } catch(e){
+        debugEl.textContent = "init error:\n" + (e?.message || String(e));
+      }
+    })();
+  </script>
+</body>
+</html>
