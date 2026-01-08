@@ -1,3 +1,4 @@
+<!-- admin.html (Zielkarte v1 – komplett neu, Ziele & Kategorien hardcoded, nutzt nur Namen aus /kinder, filtert "~") -->
 <!DOCTYPE html>
 <html lang="de">
 <head>
@@ -34,7 +35,7 @@
       width:100%; padding:12px 14px; font-size:16px;
       border:1px solid var(--border); border-radius:14px; background:#fff; outline:none;
     }
-    textarea{min-height:150px; resize:vertical}
+    textarea{min-height:100px; resize:vertical}
     button{
       border:1px solid var(--border); background:#fff; border-radius:14px;
       padding:12px 14px; font-weight:900; cursor:pointer;
@@ -89,27 +90,24 @@
   <div class="card">
     <div class="row">
       <div>
-        <div style="font-weight:950;">Neuer Zielkatalog (v1)</div>
-        <div class="muted">Speicherort: <b>/zielkarte/v1/catalog</b> (JSON). Alte Ziele bleiben unangetastet.</div>
+        <div style="font-weight:950;">Zielkatalog (hardcoded)</div>
+        <div class="muted">Speicherort: <b>/zielkarte/v1/catalog</b> (wird beim Öffnen automatisch gesetzt/aktualisiert).</div>
       </div>
       <div class="spacer"></div>
-      <button id="btnTemplate">Template</button>
-      <button id="btnSaveCatalog" class="primary">Katalog speichern</button>
+      <button id="btnPublish" class="primary">Katalog jetzt veröffentlichen</button>
     </div>
-
-    <textarea id="catalogTextarea" style="margin-top:10px" placeholder="JSON Katalog …"></textarea>
-    <div id="catalogInfo" class="muted" style="margin-top:8px">—</div>
+    <div id="catalogInfo" class="muted" style="margin-top:10px">—</div>
   </div>
 
   <div class="card">
     <div class="row">
-      <input id="search" placeholder="Suche nach Namen …">
+      <input id="search" placeholder="Suche nach Namen … (Kinder mit ~ werden ausgeblendet)">
       <span id="pillWeek" class="pill">Woche: —</span>
       <span id="pillKids" class="pill">Kinder: —</span>
     </div>
 
     <div id="kidsEmpty" class="warn" style="display:none; margin-top:10px">
-      Es sind keine Namen unter <b>/kinder</b> vorhanden.
+      Es wurden keine passenden Namen gefunden (ohne ~) unter <b>/kinder</b>.
     </div>
 
     <div id="kidList" class="list"></div>
@@ -170,7 +168,7 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
     import { getDatabase, ref, get, set, update, onValue } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-database.js";
 
-    // Firebase (wie vorher)
+    // Firebase (gleich wie vorher)
     const app = initializeApp({
       apiKey: "AIzaSyAdPN2duh89Fx5rmYlFshdf0juhYNX_7fg",
       authDomain: "punkte-45c20.firebaseapp.com",
@@ -182,17 +180,55 @@
     });
     const db = getDatabase(app);
 
-    // Paths (neu)
-    const PATH_NAMES = "kinder"; // nur Namen/Keys
+    // Alte Namen nur lesen:
+    const PATH_NAMES = "kinder";
+
+    // Neues System (alles neu):
     const PATH_CATALOG = "zielkarte/v1/catalog";
     const PATH_CHILDREN = "zielkarte/v1/children";
 
-    // DOM
-    const catalogTextarea = document.getElementById("catalogTextarea");
-    const catalogInfo = document.getElementById("catalogInfo");
-    const btnTemplate = document.getElementById("btnTemplate");
-    const btnSaveCatalog = document.getElementById("btnSaveCatalog");
+    // HARD-CODED KATALOG (Kategorien + Ziele)
+    // Hinweis: IDs stabil halten (nicht ändern), sonst verlieren Kinder ihre Zuordnung.
+    const CATALOG = {
+      version: 1,
+      categories: [
+        { id: "A", title: "Soziales Miteinander" },
+        { id: "B", title: "Kommunikation & Zuhören" },
+        { id: "C", title: "Regeln & Orientierung" },
+        { id: "D", title: "Selbstständigkeit & Organisation" },
+        { id: "E", title: "Konflikte & Verantwortung" }
+      ],
+      goals: [
+        { id: "A_freundlich", categoryId: "A", text: "Ich bin freundlich zu anderen." },
+        { id: "A_teilen", categoryId: "A", text: "Ich teile Dinge (Materialien, Spielzeug)." },
+        { id: "A_helfen", categoryId: "A", text: "Ich helfe anderen, wenn sie Unterstützung brauchen." },
+        { id: "A_mitspielen", categoryId: "A", text: "Ich suche mir andere Kinder zum Spielen und bleibe fair." },
 
+        { id: "B_melden", categoryId: "B", text: "Ich melde mich, bevor ich spreche." },
+        { id: "B_lautstaerke", categoryId: "B", text: "Ich rede in angemessener Lautstärke." },
+        { id: "B_zuhoeren", categoryId: "B", text: "Ich höre anderen zu und lasse sie ausreden." },
+        { id: "B_nicht_reinrufen", categoryId: "B", text: "Ich rufe nicht rein und warte, bis ich dran bin." },
+
+        { id: "C_regeln_ohne_erinnerung", categoryId: "C", text: "Ich halte Regeln auch ohne Erinnerung ein." },
+        { id: "C_flur_langsam", categoryId: "C", text: "Ich gehe langsam durch den Flur, ohne zu drängeln." },
+        { id: "C_am_platz", categoryId: "C", text: "Ich bleibe an meinem Platz sitzen (wenn es gerade nötig ist)." },
+        { id: "C_essen", categoryId: "C", text: "Ich spiele nicht mit dem Essen." },
+
+        { id: "D_aufraeumen", categoryId: "D", text: "Ich räume meine Sachen weg." },
+        { id: "D_hilfe_holen", categoryId: "D", text: "Ich hole mir Hilfe, wenn ich alleine nicht weiterkomme." },
+        { id: "D_zeit_planen", categoryId: "D", text: "Ich plane meine Zeit eigenständig (Hausaufgaben, Spielen, Essen)." },
+        { id: "D_jacke_schuhe", categoryId: "D", text: "Ich hänge meine Jacke richtig auf und stelle meine Schuhe an den Rand." },
+
+        { id: "E_grenzen_respekt", categoryId: "E", text: "Ich respektiere die Grenzen anderer Kinder." },
+        { id: "E_streit_mit_worten", categoryId: "E", text: "Ich löse Streit mit Worten (ohne Schubsen, Schlagen oder Beleidigen)." },
+        { id: "E_nicht_kommentieren", categoryId: "E", text: "Ich kommentiere andere Kinder nicht und kümmere mich um meine eigenen Aufgaben." },
+        { id: "E_anweisungen", categoryId: "E", text: "Ich akzeptiere Anweisungen ohne Diskussion." }
+      ]
+    };
+
+    // DOM
+    const btnPublish = document.getElementById("btnPublish");
+    const catalogInfo = document.getElementById("catalogInfo");
     const search = document.getElementById("search");
     const pillWeek = document.getElementById("pillWeek");
     const pillKids = document.getElementById("pillKids");
@@ -219,18 +255,13 @@
     const btnClearNote = document.getElementById("btnClearNote");
 
     // State
-    let NAMES = [];                 // [ "Anna", "Ben", ... ] aus /kinder keys
-    let catalog = null;             // { categories:[], goals:[] }
-    let childStates = {};           // { "Anna": {activeGoalId, stamps, noteText, noteWeek}, ... }
-
+    let NAMES = [];            // nur Keys aus /kinder, gefiltert
+    let childStates = {};      // /zielkarte/v1/children
     let currentName = null;
     let draftStamps = 0;
 
     // Utils
     const clampStamps = (x) => Math.max(0, Math.min(10, Math.floor(Number(x) || 0)));
-    const escapeHtml = (s) => String(s).replace(/[&<>"']/g, m => ({
-      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
-    }[m]));
 
     function isoWeekString(date = new Date()){
       const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
@@ -248,93 +279,37 @@
     btnClose.addEventListener("click", hideOverlay);
     overlay.addEventListener("click", (e)=>{ if(e.target === overlay) hideOverlay(); });
 
-    function getGoalById(id){
-      if(!catalog?.goals?.length) return null;
-      return catalog.goals.find(g => g.id === id) || null;
+    function firstGoalId(){ return CATALOG.goals[0]?.id || null; }
+    function getGoalById(id){ return CATALOG.goals.find(g => g.id === id) || null; }
+
+    function isValidKidName(name){
+      const n = String(name || "").trim();
+      if(!n) return false;
+      if(n.includes("~")) return false;         // Vorgabe: keine ~ Namen
+      if(n.length < 2) return false;
+      return true;
     }
 
-    function firstGoalId(){
-      return catalog?.goals?.[0]?.id || null;
+    async function publishCatalog(){
+      await set(ref(db, PATH_CATALOG), CATALOG);
+      catalogInfo.textContent = `Katalog veröffentlicht. Kategorien: ${CATALOG.categories.length}, Ziele: ${CATALOG.goals.length}`;
     }
 
-    function validateCatalog(obj){
-      if(!obj || typeof obj !== "object") return "Katalog ist kein Objekt.";
-      if(!Array.isArray(obj.categories)) return "Katalog.categories muss ein Array sein.";
-      if(!Array.isArray(obj.goals)) return "Katalog.goals muss ein Array sein.";
-      for(const c of obj.categories){
-        if(!c || typeof c !== "object") return "Kategorie-Eintrag ungültig.";
-        if(!c.id || !c.title) return "Kategorie braucht id und title.";
+    btnPublish.addEventListener("click", async ()=>{
+      try{
+        await publishCatalog();
+      } catch(e){
+        alert("Fehler beim Veröffentlichen: " + (e?.message || String(e)));
       }
-      for(const g of obj.goals){
-        if(!g || typeof g !== "object") return "Ziel-Eintrag ungültig.";
-        if(!g.id || !g.categoryId || !g.text) return "Ziel braucht id, categoryId, text.";
-      }
-      const catIds = new Set(obj.categories.map(c=>c.id));
-      for(const g of obj.goals){
-        if(!catIds.has(g.categoryId)) return `Ziel ${g.id} verweist auf unbekannte categoryId ${g.categoryId}.`;
-      }
-      return null;
-    }
+    });
 
-    function renderKidList(){
-      const q = (search.value || "").toLowerCase();
-      const filtered = NAMES.filter(n => n.toLowerCase().includes(q)).sort((a,b)=>a.localeCompare(b,'de'));
-
-      kidList.innerHTML = "";
-      if(filtered.length === 0){
-        kidsEmpty.style.display = NAMES.length ? "none" : "block";
-        if(NAMES.length){
-          const div = document.createElement("div");
-          div.className = "warn";
-          div.textContent = "Keine Treffer für die Suche.";
-          kidList.appendChild(div);
-        }
-        return;
-      }
-      kidsEmpty.style.display = "none";
-
-      for(const name of filtered){
-        const st = childStates[name] || null;
-        const stamps = clampStamps(st?.stamps ?? 0);
-        const goal = st?.activeGoalId ? getGoalById(st.activeGoalId) : null;
-
-        const el = document.createElement("div");
-        el.className = "kid";
-        el.innerHTML = `
-          <div>
-            <div class="kidName">${escapeHtml(name)}</div>
-            <div class="kidMeta">${stamps}/10 • ${escapeHtml(goal?.text || "— kein Ziel —")}</div>
-          </div>
-          <div class="kidMeta">›</div>
-        `;
-        el.addEventListener("click", ()=>openKid(name));
-        kidList.appendChild(el);
-      }
-
-      pillKids.textContent = `Kinder: ${NAMES.length}`;
-    }
-
-    search.addEventListener("input", renderKidList);
-
-    function renderGoalSelect(){
+    function renderGoalSelect(activeGoalId){
       goalSelect.innerHTML = "";
-      if(!catalog?.categories?.length || !catalog?.goals?.length){
-        const opt = document.createElement("option");
-        opt.value = "";
-        opt.textContent = "— Kein Katalog —";
-        goalSelect.appendChild(opt);
-        goalSelect.disabled = true;
-        btnSetGoal.disabled = true;
-        return;
-      }
-      goalSelect.disabled = false;
-      btnSetGoal.disabled = false;
-
       // optgroups by category
-      for(const cat of catalog.categories){
+      for(const cat of CATALOG.categories){
         const group = document.createElement("optgroup");
         group.label = cat.title;
-        const goals = catalog.goals.filter(g => g.categoryId === cat.id);
+        const goals = CATALOG.goals.filter(g => g.categoryId === cat.id);
         for(const g of goals){
           const opt = document.createElement("option");
           opt.value = g.id;
@@ -343,13 +318,7 @@
         }
         goalSelect.appendChild(group);
       }
-
-      const st = currentName ? childStates[currentName] : null;
-      if(st?.activeGoalId){
-        goalSelect.value = st.activeGoalId;
-      } else {
-        goalSelect.value = firstGoalId() || "";
-      }
+      goalSelect.value = activeGoalId || firstGoalId() || "";
     }
 
     function renderCircles(stamps){
@@ -368,12 +337,9 @@
     }
 
     async function ensureChildStateExists(name){
-      const st = childStates[name];
-      if(st) return st;
-
-      const goalId = firstGoalId();
+      if(childStates[name]) return childStates[name];
       const init = {
-        activeGoalId: goalId,
+        activeGoalId: firstGoalId(),
         stamps: 0,
         noteText: "",
         noteWeek: CURRENT_WEEK
@@ -391,6 +357,49 @@
       return childStates[name];
     }
 
+    function renderKidList(){
+      const q = (search.value || "").toLowerCase();
+      const filtered = NAMES
+        .filter(n => n.toLowerCase().includes(q))
+        .sort((a,b)=>a.localeCompare(b,'de'));
+
+      kidList.innerHTML = "";
+
+      if(filtered.length === 0){
+        kidsEmpty.style.display = NAMES.length ? "none" : "block";
+        if(NAMES.length){
+          const div = document.createElement("div");
+          div.className = "warn";
+          div.textContent = "Keine Treffer für die Suche.";
+          kidList.appendChild(div);
+        }
+        return;
+      }
+      kidsEmpty.style.display = "none";
+
+      for(const name of filtered){
+        const st = childStates[name] || {};
+        const stamps = clampStamps(st.stamps ?? 0);
+        const goal = st.activeGoalId ? getGoalById(st.activeGoalId) : null;
+
+        const el = document.createElement("div");
+        el.className = "kid";
+        el.innerHTML = `
+          <div>
+            <div class="kidName">${name}</div>
+            <div class="kidMeta">${stamps}/10 • ${(goal?.text || "— kein Ziel —")}</div>
+          </div>
+          <div class="kidMeta">›</div>
+        `;
+        el.addEventListener("click", ()=>openKid(name));
+        kidList.appendChild(el);
+      }
+
+      pillKids.textContent = `Kinder: ${NAMES.length}`;
+    }
+
+    search.addEventListener("input", renderKidList);
+
     async function openKid(name){
       currentName = name;
       detailName.textContent = name;
@@ -398,14 +407,15 @@
       let st = await ensureChildStateExists(name);
       st = await ensureNoteCurrentWeek(name, st);
 
-      draftStamps = clampStamps(st.stamps ?? 0);
-      stampsPill.textContent = `Stempel: ${draftStamps}/10`;
-      renderCircles(draftStamps);
-
-      renderGoalSelect();
+      const stamps = clampStamps(st.stamps ?? 0);
+      draftStamps = stamps;
 
       const goal = st.activeGoalId ? getGoalById(st.activeGoalId) : null;
-      detailMeta.textContent = `${draftStamps}/10 • ${CURRENT_WEEK} • ${goal?.text || "— kein Ziel —"}`;
+      detailMeta.textContent = `${stamps}/10 • ${CURRENT_WEEK} • ${(goal?.text || "— kein Ziel —")}`;
+
+      renderGoalSelect(st.activeGoalId);
+      stampsPill.textContent = `Stempel: ${stamps}/10`;
+      renderCircles(stamps);
 
       noteEl.value = st.noteText || "";
 
@@ -432,33 +442,28 @@
       const st = childStates[currentName] || {};
       childStates[currentName] = { ...st, stamps: draftStamps };
       const goal = childStates[currentName].activeGoalId ? getGoalById(childStates[currentName].activeGoalId) : null;
-      detailMeta.textContent = `${draftStamps}/10 • ${CURRENT_WEEK} • ${goal?.text || "— kein Ziel —"}`;
+      detailMeta.textContent = `${draftStamps}/10 • ${CURRENT_WEEK} • ${(goal?.text || "— kein Ziel —")}`;
       renderKidList();
     });
 
     btnSetGoal.addEventListener("click", async ()=>{
       if(!currentName) return;
-      if(!catalog?.goals?.length){
-        alert("Kein Zielkatalog vorhanden. Bitte zuerst Katalog speichern.");
-        return;
-      }
       const goalId = goalSelect.value || firstGoalId();
       if(!goalId){
-        alert("Kein Ziel auswählbar.");
+        alert("Kein Ziel verfügbar.");
         return;
       }
-
       const patch = { activeGoalId: goalId, stamps: 0, noteText: "", noteWeek: CURRENT_WEEK };
       await update(ref(db, `${PATH_CHILDREN}/${currentName}`), patch);
       childStates[currentName] = { ...(childStates[currentName] || {}), ...patch };
 
       draftStamps = 0;
-      renderCircles(0);
       stampsPill.textContent = "Stempel: 0/10";
+      renderCircles(0);
       noteEl.value = "";
 
       const goal = getGoalById(goalId);
-      detailMeta.textContent = `0/10 • ${CURRENT_WEEK} • ${goal?.text || "— kein Ziel —"}`;
+      detailMeta.textContent = `0/10 • ${CURRENT_WEEK} • ${(goal?.text || "— kein Ziel —")}`;
       renderKidList();
     });
 
@@ -480,65 +485,29 @@
       renderKidList();
     });
 
-    // Catalog template
-    btnTemplate.addEventListener("click", ()=>{
-      const tpl = {
-        categories: [
-          { id: "A", title: "Soziales Miteinander" },
-          { id: "B", title: "Kommunikation & Zuhören" },
-          { id: "C", title: "Regeln & Orientierung" },
-          { id: "D", title: "Selbstständigkeit & Organisation" },
-          { id: "E", title: "Konflikte & Verantwortung" }
-        ],
-        goals: [
-          { id: "A_freundlich", categoryId: "A", text: "Ich bin freundlich zu anderen." },
-          { id: "B_melden", categoryId: "B", text: "Ich melde mich, bevor ich spreche." },
-          { id: "D_jacke_schuhe", categoryId: "D", text: "Ich hänge meine Jacke richtig auf und stelle meine Schuhe an den Rand." }
-        ]
-      };
-      catalogTextarea.value = JSON.stringify(tpl, null, 2);
-      catalogInfo.textContent = "Template eingefügt (noch nicht gespeichert).";
-    });
-
-    btnSaveCatalog.addEventListener("click", async ()=>{
-      let obj = null;
-      try{
-        obj = JSON.parse(catalogTextarea.value || "null");
-      } catch(e){
-        alert("JSON Fehler: " + (e?.message || e));
-        return;
-      }
-      const err = validateCatalog(obj);
-      if(err){
-        alert("Katalog ungültig: " + err);
-        return;
-      }
-      await set(ref(db, PATH_CATALOG), obj);
-      catalog = obj;
-      catalogInfo.textContent = `Gespeichert. Kategorien: ${catalog.categories.length}, Ziele: ${catalog.goals.length}`;
-      renderGoalSelect();
-      renderKidList();
-    });
-
-    // Live: Names from old path (keys only)
-    onValue(ref(db, PATH_NAMES), (snap)=>{
+    // Live: Namen aus altem Pfad (nur Keys), filter "~"
+    onValue(ref(db, PATH_NAMES), async (snap)=>{
       const arr = [];
       if(snap.exists()){
-        snap.forEach(ch => arr.push(ch.key));
+        snap.forEach(ch => {
+          const name = ch.key;
+          if(isValidKidName(name)) arr.push(name);
+        });
       }
       NAMES = arr;
       pillKids.textContent = `Kinder: ${NAMES.length}`;
       renderKidList();
+
       debugEl.textContent =
-        `names: /${PATH_NAMES} -> ${NAMES.length}\n` +
-        `catalog: /${PATH_CATALOG} -> ${catalog?.goals?.length ?? 0} goals\n` +
+        `names: /${PATH_NAMES} -> ${NAMES.length} (gefiltert: "~")\n` +
+        `catalog: hardcoded (${CATALOG.goals.length} goals)\n` +
         `states: /${PATH_CHILDREN} -> live\n` +
         `week: ${CURRENT_WEEK}`;
     }, (err)=>{
       debugEl.textContent = "names listener error:\n" + (err?.message || String(err));
     });
 
-    // Live: New child states
+    // Live: States (neuer Pfad)
     onValue(ref(db, PATH_CHILDREN), (snap)=>{
       const map = {};
       if(snap.exists()){
@@ -550,43 +519,14 @@
       debugEl.textContent = "children listener error:\n" + (err?.message || String(err));
     });
 
-    // Live: Catalog
-    onValue(ref(db, PATH_CATALOG), (snap)=>{
-      catalog = snap.exists() ? snap.val() : null;
-      if(catalog){
-        catalogTextarea.value = JSON.stringify(catalog, null, 2);
-        catalogInfo.textContent = `Geladen. Kategorien: ${catalog.categories?.length ?? 0}, Ziele: ${catalog.goals?.length ?? 0}`;
-      } else {
-        catalogInfo.textContent = "Kein Katalog vorhanden. Nutze Template oder füge JSON ein und speichere.";
-        if(!catalogTextarea.value.trim()) catalogTextarea.value = "";
-      }
-      renderGoalSelect();
-      renderKidList();
-      debugEl.textContent =
-        `names: /${PATH_NAMES} -> ${NAMES.length}\n` +
-        `catalog: /${PATH_CATALOG} -> ${catalog?.goals?.length ?? 0} goals\n` +
-        `states: /${PATH_CHILDREN} -> ${Object.keys(childStates).length}\n` +
-        `week: ${CURRENT_WEEK}`;
-    }, (err)=>{
-      debugEl.textContent = "catalog listener error:\n" + (err?.message || String(err));
-    });
-
-    // Initial load helper (optional)
+    // Init: Katalog automatisch setzen (damit Index sofort läuft)
     (async function init(){
       try{
-        // if catalog not loaded yet, try once
-        const c = await get(ref(db, PATH_CATALOG));
-        if(c.exists()){
-          catalog = c.val();
-          catalogTextarea.value = JSON.stringify(catalog, null, 2);
-          catalogInfo.textContent = `Geladen. Kategorien: ${catalog.categories?.length ?? 0}, Ziele: ${catalog.goals?.length ?? 0}`;
-        } else {
-          catalogInfo.textContent = "Kein Katalog vorhanden. Nutze Template oder füge JSON ein und speichere.";
-        }
-        renderGoalSelect();
+        await publishCatalog();
       } catch(e){
-        debugEl.textContent = "init error:\n" + (e?.message || String(e));
+        // still usable even if catalog write fails (depends on rules)
       }
+      catalogInfo.textContent = `Kategorien: ${CATALOG.categories.length} • Ziele: ${CATALOG.goals.length}`;
     })();
   </script>
 </body>
