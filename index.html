@@ -1,10 +1,13 @@
-<!-- index.html (Zielkarte v1)
+<!-- index.html (Zielkarte v1) — FIX: Name/Ziel/Stempel korrekt nach PIN
+  BUG-URSACHE: pendingName wurde durch hidePin() auf null gesetzt, bevor openDetail(pendingName) lief.
+  FIX: Name vor hidePin() in lokale Variable kopieren.
+
   - Namenliste: nur Kinder ohne "~"
   - In der Liste: KEINE Anzeige von Stempeln/Ziel
   - Nach Klick auf Name: erst PIN-Abfrage (db1: gesamt-dae4e /kinder/{name}/code, Sperre: gesperrt + sperrGrund)
   - Erst nach korrekter PIN: Ziel + grüne Stempel + "es fehlen noch X"
-  - Katalog wird aus db2 gelesen: /zielkarte/v1/catalog (kein Hardcode, kein Publish-Button)
-  - Fortschritt wird aus db2 gelesen: /zielkarte/v1/children/{name}
+  - Katalog wird aus db2 gelesen: /zielkarte/v1/catalog
+  - Fortschritt/Stempel wird aus db2 gelesen: /zielkarte/v1/children/{name}
 -->
 <!DOCTYPE html>
 <html lang="de">
@@ -21,6 +24,7 @@
       --border:#e5e7eb; --radius:18px; --shadow:0 6px 18px rgba(0,0,0,.08);
       --green:#22c55e;
       --red:#ef4444;
+      --blue:#007aff;
     }
     *{box-sizing:border-box}
     body{
@@ -135,7 +139,7 @@
       font-weight:900;
       cursor:pointer;
     }
-    .btn.primary{background:#007aff; border-color:#007aff; color:#fff}
+    .btn.primary{background:var(--blue); border-color:var(--blue); color:#fff}
     .err{color:var(--red); font-weight:900; font-size:12px; margin-top:8px}
     .lockedBox{
       background:#ffecec;
@@ -213,7 +217,7 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.5.2/firebase-app.js";
     import { getDatabase, ref, get, onValue, set } from "https://www.gstatic.com/firebasejs/10.5.2/firebase-database.js";
 
-    // === Firebase 1: gesamt-dae4e (Zugang / PIN / Sperre) ===
+    // Firebase 1: gesamt-dae4e (Zugang / PIN / Sperre)
     const configAccess = {
       apiKey:"AIzaSyAQaNKUa-RKvUcwlPpWnEyKxcVjYV6cZuU",
       authDomain:"gesamt-dae4e.firebaseapp.com",
@@ -224,7 +228,7 @@
       appId:"1:844023612743:web:0821aa894541f89a7df862"
     };
 
-    // === Firebase 2: punkte-45c20 (Zielkarte / Katalog / Stempel) ===
+    // Firebase 2: punkte-45c20 (Zielkarte / Katalog / Stempel)
     const configPoints = {
       apiKey: "AIzaSyAdPN2duh89Fx5rmYlFshdf0juhYNX_7fg",
       authDomain: "punkte-45c20.firebaseapp.com",
@@ -242,10 +246,10 @@
     const dbPoints = getDatabase(appPoints);
 
     // Pfade
-    const PATH_NAMES_OLD = "kinder";                 // (dbPoints) nur Keys
-    const PATH_ACCESS_KIDS = "kinder";              // (dbAccess) hier liegen code/gesperrt/sperrGrund
-    const PATH_CATALOG = "zielkarte/v1/catalog";    // (dbPoints)
-    const PATH_CHILDREN = "zielkarte/v1/children";  // (dbPoints)
+    const PATH_NAMES_OLD   = "kinder";                 // (dbPoints) nur Keys
+    const PATH_ACCESS_KIDS = "kinder";                 // (dbAccess) code/gesperrt/sperrGrund
+    const PATH_CATALOG     = "zielkarte/v1/catalog";   // (dbPoints)
+    const PATH_CHILDREN    = "zielkarte/v1/children";  // (dbPoints)
 
     // DOM
     const listView = document.getElementById("listView");
@@ -272,12 +276,12 @@
     const pinLockedBox = document.getElementById("pinLockedBox");
 
     // State
-    let namesPoints = [];         // aus dbPoints/kinder (Keys)
-    let accessKids = {};          // aus dbAccess/kinder (Obj)
-    let catalog = null;           // aus dbPoints/zielkarte/v1/catalog
-    let childStates = {};         // aus dbPoints/zielkarte/v1/children
+    let namesPoints = [];  // dbPoints/kinder keys (gefiltert)
+    let accessKids  = {};  // dbAccess/kinder map
+    let catalog     = null;
+    let childStates = {};
 
-    let pendingName = null;       // Name, für den PIN abgefragt wird
+    let pendingName = null;
 
     // Utils
     const clampStamps = (x) => Math.max(0, Math.min(10, Math.floor(Number(x) || 0)));
@@ -285,7 +289,7 @@
     function isValidName(name){
       const n = String(name || "").trim();
       if(!n) return false;
-      if(n.includes("~")) return false;     // Vorgabe
+      if(n.includes("~")) return false;
       if(n.length < 2) return false;
       return true;
     }
@@ -311,6 +315,7 @@
 
     pinOverlay.addEventListener("click", (e)=>{ if(e.target === pinOverlay) hidePin(); });
     pinCancel.addEventListener("click", hidePin);
+    backBtn.addEventListener("click", ()=>toggle(true));
 
     function getGoalById(id){
       if(!catalog?.goals?.length) return null;
@@ -329,12 +334,11 @@
       }
     }
 
-    // Anzeige: nur Namen (ohne Fortschritt!)
+    // Liste: nur Namen (ohne Stempel/Ziel)
     function renderList(){
       const q = (searchEl.value || "").toLowerCase();
 
-      // Namen sollen idealerweise in beiden DBs existieren (PIN + Zielkarte-Names)
-      // -> wir nehmen Keys aus dbPoints/kinder, aber nur wenn es auch in dbAccess/kinder existiert.
+      // nur Namen, die auch in accessKids existieren (damit PIN sicher klappt)
       const merged = namesPoints.filter(n => accessKids[n] != null);
 
       hintEl.classList.toggle("hidden", merged.length === namesPoints.length);
@@ -366,9 +370,7 @@
       }
     }
     searchEl.addEventListener("input", renderList);
-    backBtn.addEventListener("click", ()=>toggle(true));
 
-    // PIN-Flow: Sperrprüfung + Codevergleich (dbAccess)
     async function startPinFlow(name){
       pendingName = name;
       pinTitle.textContent = "PIN eingeben";
@@ -376,7 +378,6 @@
 
       showPin();
 
-      // Pre-check: Sperre direkt anzeigen (ohne PIN-Falschraten)
       const acc = accessKids[name];
       if(acc && acc.gesperrt === true){
         pinLockedBox.textContent = `Dein Konto wurde vorübergehend gesperrt.\n\nGrund: ${acc.sperrGrund || "Kein Grund angegeben."}`;
@@ -392,8 +393,9 @@
     async function pinOkHandler(){
       if(!pendingName) return;
 
-      // Wenn gesperrt: kein Weiter
-      const acc = accessKids[pendingName];
+      const name = pendingName; // <<< FIX: lokal merken, bevor hidePin pendingName löscht
+
+      const acc = accessKids[name];
       if(acc && acc.gesperrt === true) return;
 
       const entered = String(pinInput.value || "").trim();
@@ -403,14 +405,12 @@
         return;
       }
 
-      // Code aus dbAccess/kinder/{name}/code
-      // (aus Admin: code wird als String gespeichert)
       const real = String(acc?.code ?? "").trim();
 
       if(real && entered === real){
         pinError.classList.add("hidden");
         hidePin();
-        await openDetail(pendingName);
+        await openDetail(name);   // <<< FIX: richtiges name verwenden
       } else {
         pinError.textContent = "Falsche PIN.";
         pinError.classList.remove("hidden");
@@ -421,10 +421,8 @@
     pinOk.addEventListener("click", pinOkHandler);
     pinInput.addEventListener("keydown", (e)=>{ if(e.key === "Enter") pinOkHandler(); });
 
-    // Detail: erst nach PIN, dann Ziele/Stempel anzeigen
     async function ensureChildStateExists(name){
       if(childStates[name]) return childStates[name];
-
       if(!catalog?.goals?.length) return null;
 
       const init = {
@@ -465,9 +463,7 @@
       toggle(false);
     }
 
-    // === Live Listener ===
-
-    // dbPoints: Namen (Keys) aus /kinder
+    // Listener: dbPoints/kinder (Keys)
     onValue(ref(dbPoints, PATH_NAMES_OLD), (snap)=>{
       const arr = [];
       if(snap.exists()){
@@ -480,7 +476,7 @@
       renderList();
     });
 
-    // dbAccess: Zugangsdaten/PIN/Sperre aus /kinder
+    // Listener: dbAccess/kinder (Zugang)
     onValue(ref(dbAccess, PATH_ACCESS_KIDS), (snap)=>{
       const map = {};
       if(snap.exists()){
@@ -492,7 +488,7 @@
       accessKids = map;
       renderList();
 
-      // falls PIN-Overlay offen ist und Konto jetzt gesperrt wurde -> UI aktualisieren
+      // PIN Overlay live sperren falls nötig
       if(pendingName && accessKids[pendingName]?.gesperrt === true){
         pinLockedBox.textContent = `Dein Konto wurde vorübergehend gesperrt.\n\nGrund: ${accessKids[pendingName]?.sperrGrund || "Kein Grund angegeben."}`;
         pinLockedBox.classList.remove("hidden");
@@ -501,21 +497,20 @@
       }
     });
 
-    // dbPoints: Katalog
+    // Listener: Katalog
     onValue(ref(dbPoints, PATH_CATALOG), (snap)=>{
       catalog = snap.exists() ? snap.val() : null;
       renderList();
     });
 
-    // dbPoints: States
+    // Listener: Zielkarte-States
     onValue(ref(dbPoints, PATH_CHILDREN), (snap)=>{
       const map = {};
       if(snap.exists()){
         snap.forEach(ch => map[ch.key] = ch.val() || {});
       }
       childStates = map;
-      // List bleibt ohne Stempelanzeige, Detail wird live aktualisiert wenn offen
-      // (optional) – wir lassen es so.
+      // Detail wird beim Öffnen korrekt gezogen; optional live-refresh könnte man ergänzen.
     });
   </script>
 </body>
