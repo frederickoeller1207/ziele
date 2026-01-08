@@ -9,337 +9,269 @@
 
   <style>
     :root{
-      --bg:#f7f8fc;
-      --card:#ffffff;
-      --txt:#111827;
-      --muted:#6b7280;
-      --border:#e5e7eb;
-      --accent:#111827;
-      --radius:18px;
-      --shadow:0 6px 18px rgba(0,0,0,.08);
+      --bg:#f7f8fc; --card:#ffffff; --txt:#111827; --muted:#6b7280;
+      --border:#e5e7eb; --radius:18px; --shadow:0 6px 18px rgba(0,0,0,.08);
+      --fill:#111827;
     }
-
     *{box-sizing:border-box}
-
     body{
-      margin:0;
-      padding:14px;
+      margin:0; padding:14px; background:var(--bg); color:var(--txt);
       font-family:'SF Pro Display',system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
-      background:var(--bg);
-      color:var(--txt);
-      min-height:100vh;
-      display:flex;
-      justify-content:center;
+      min-height:100vh; display:flex; justify-content:center;
     }
-
-    .wrap{
-      width:100%;
-      max-width:760px;
-    }
-
-    h1{
-      text-align:center;
-      font-size:26px;
-      font-weight:900;
-      margin:8px 0 14px;
-    }
-
+    .wrap{width:100%; max-width:760px}
+    h1{text-align:center; font-size:26px; font-weight:900; margin:8px 0 14px}
     .card{
-      background:var(--card);
-      border:1px solid var(--border);
-      border-radius:var(--radius);
-      box-shadow:var(--shadow);
-      padding:14px;
-      margin-bottom:14px;
+      background:var(--card); border:1px solid var(--border); border-radius:var(--radius);
+      box-shadow:var(--shadow); padding:14px; margin-bottom:14px;
     }
-
     .hidden{display:none}
-
-    /* LISTE */
     .search{
-      width:100%;
-      padding:14px;
-      border-radius:14px;
-      border:1px solid var(--border);
-      font-size:16px;
-      margin-bottom:12px;
+      width:100%; padding:14px; border-radius:14px; border:1px solid var(--border);
+      font-size:16px; margin-bottom:12px;
     }
-
-    .kidList{
-      display:flex;
-      flex-direction:column;
-      gap:12px;
-    }
-
+    .kidList{display:flex; flex-direction:column; gap:12px}
     .kidBtn{
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-      padding:16px;
-      border-radius:18px;
-      border:1px solid var(--border);
-      background:#fff;
-      font-size:20px;
-      font-weight:900;
-      cursor:pointer;
+      display:flex; justify-content:space-between; align-items:center;
+      padding:16px; border-radius:18px; border:1px solid var(--border);
+      background:#fff; font-size:20px; font-weight:900; cursor:pointer;
     }
-
     .kidBtn:active{transform:scale(.99)}
+    .kidMeta{font-size:12px; color:var(--muted); font-weight:800}
 
-    .kidMeta{
-      font-size:12px;
-      color:var(--muted);
-      font-weight:700;
-    }
-
-    /* DETAIL */
-    .toolbar{
-      display:flex;
-      align-items:center;
-      gap:10px;
-      margin-bottom:6px;
-    }
-
+    .toolbar{display:flex; align-items:center; gap:10px; margin-bottom:6px}
     .back{
-      border:1px solid var(--border);
-      background:#fff;
-      border-radius:14px;
-      padding:10px 14px;
-      font-weight:900;
-      cursor:pointer;
+      border:1px solid var(--border); background:#fff; border-radius:14px;
+      padding:10px 14px; font-weight:900; cursor:pointer;
     }
-
-    .center{
-      text-align:center;
-    }
-
-    .mouse{
-      width:56px;
-      height:56px;
-      margin:4px auto 0;
-      display:block;
-    }
-
-    .subtitle{
-      color:var(--muted);
-      font-size:13px;
-      font-weight:700;
-      margin-top:2px;
-    }
+    .center{text-align:center}
+    .mouse{width:56px; height:56px; margin:4px auto 0; display:block}
+    .subtitle{color:var(--muted); font-size:13px; font-weight:800; margin-top:2px}
 
     .circles{
-      display:grid;
-      grid-template-columns:repeat(5,1fr);
-      gap:12px;
-      max-width:420px;
-      margin:18px auto 12px;
+      display:grid; grid-template-columns:repeat(5,1fr); gap:12px;
+      max-width:420px; margin:18px auto 12px;
     }
-
     .dot{
-      aspect-ratio:1/1;
-      border-radius:999px;
-      border:2px solid var(--border);
-      background:#fff;
+      aspect-ratio:1/1; border-radius:999px; border:2px solid var(--border); background:#fff;
     }
-
-    .dot.on{
-      background:var(--accent);
-      border-color:var(--accent);
-    }
-
-    .goalText{
-      font-size:20px;
-      font-weight:900;
-      text-align:center;
-      margin-top:10px;
-    }
-
-    .hint{
-      font-size:12px;
-      color:var(--muted);
-      text-align:center;
-      margin-top:6px;
-      font-weight:700;
-    }
-
-    .empty{
-      text-align:center;
-      font-size:13px;
-      color:var(--muted);
-      font-weight:700;
-      padding:20px 0;
+    .dot.on{background:var(--fill); border-color:var(--fill)}
+    .goalText{font-size:20px; font-weight:900; text-align:center; margin-top:10px}
+    .hint{font-size:12px; color:var(--muted); text-align:center; margin-top:6px; font-weight:800}
+    .empty{text-align:center; font-size:13px; color:var(--muted); font-weight:800; padding:20px 0}
+    .warn{
+      background:#fff7ed; border:1px solid #fed7aa; border-radius:14px; padding:10px;
+      color:#9a3412; font-size:12px; font-weight:800; margin-top:10px;
     }
   </style>
 </head>
 
 <body>
-<div class="wrap">
+  <div class="wrap">
+    <h1>Zielkarte</h1>
 
-  <h1>Zielkarte</h1>
-
-  <!-- LIST VIEW -->
-  <div id="listView" class="card">
-    <input id="search" class="search" placeholder="Wähle deinen Namen…" />
-    <div id="kidList" class="kidList"></div>
-    <div id="noKids" class="empty hidden">
-      Es sind noch keine Kinder angelegt.
-    </div>
-  </div>
-
-  <!-- DETAIL VIEW -->
-  <div id="detailView" class="card hidden">
-    <div class="toolbar">
-      <button id="backBtn" class="back">← Zurück</button>
+    <div id="listView" class="card">
+      <input id="search" class="search" placeholder="Wähle deinen Namen …" />
+      <div id="kidList" class="kidList"></div>
+      <div id="noKids" class="empty hidden">Es sind noch keine Kinder vorhanden.</div>
     </div>
 
-    <div class="center">
-      <!-- Maus -->
-      <svg class="mouse" viewBox="0 0 64 64" aria-hidden="true">
-        <circle cx="20" cy="18" r="10" fill="#111827"/>
-        <circle cx="44" cy="18" r="10" fill="#111827"/>
-        <ellipse cx="32" cy="36" rx="18" ry="16" fill="#111827"/>
-        <circle cx="26" cy="34" r="3" fill="#fff"/>
-        <circle cx="38" cy="34" r="3" fill="#fff"/>
-        <circle cx="26" cy="34" r="1.5" fill="#111827"/>
-        <circle cx="38" cy="34" r="1.5" fill="#111827"/>
-        <ellipse cx="32" cy="42" rx="6" ry="4" fill="#fff"/>
-      </svg>
-
-      <div style="font-size:18px;font-weight:900;margin-top:4px">
-        Deine Zielkarte
+    <div id="detailView" class="card hidden">
+      <div class="toolbar">
+        <button id="backBtn" class="back">← Zurück</button>
       </div>
-      <div id="kidName" class="subtitle">—</div>
+
+      <div class="center">
+        <svg class="mouse" viewBox="0 0 64 64" aria-hidden="true">
+          <circle cx="20" cy="18" r="10" fill="#111827"/>
+          <circle cx="44" cy="18" r="10" fill="#111827"/>
+          <ellipse cx="32" cy="36" rx="18" ry="16" fill="#111827"/>
+          <circle cx="26" cy="34" r="3" fill="#fff"/>
+          <circle cx="38" cy="34" r="3" fill="#fff"/>
+          <circle cx="26" cy="34" r="1.5" fill="#111827"/>
+          <circle cx="38" cy="34" r="1.5" fill="#111827"/>
+          <ellipse cx="32" cy="42" rx="6" ry="4" fill="#fff"/>
+        </svg>
+        <div style="font-size:18px;font-weight:900;margin-top:4px">Deine Zielkarte</div>
+        <div id="kidName" class="subtitle">—</div>
+      </div>
+
+      <div id="circles" class="circles"></div>
+      <div id="goalText" class="goalText">—</div>
+      <div class="hint">Sammle 10 Stempel, um dein Ziel zu erreichen.</div>
+
+      <div id="noCatalogWarn" class="warn hidden">
+        Es ist noch kein Zielkatalog vorhanden. Bitte im <b>admin.html</b> den Katalog speichern.
+      </div>
     </div>
-
-    <div id="circles" class="circles"></div>
-
-    <div id="goalText" class="goalText">—</div>
-    <div class="hint">Sammle 10 Stempel, um dein Ziel zu erreichen.</div>
   </div>
 
-</div>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
+    import { getDatabase, ref, get, set, onValue } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-database.js";
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
-import { getDatabase, ref, get, onValue } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-database.js";
-
-/* Firebase – identisch zum Admin */
-const app = initializeApp({
-  apiKey: "AIzaSyAdPN2duh89Fx5rmYlFshdf0juhYNX_7fg",
-  authDomain: "punkte-45c20.firebaseapp.com",
-  databaseURL: "https://punkte-45c20-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId: "punkte-45c20",
-  storageBucket: "punkte-45c20.appspot.com",
-  messagingSenderId: "931713539549",
-  appId: "1:931713539549:web:e348bf38369639f1906a34"
-});
-
-const db = getDatabase(app);
-
-/* DOM */
-const listView = document.getElementById("listView");
-const detailView = document.getElementById("detailView");
-const kidListEl = document.getElementById("kidList");
-const noKidsEl = document.getElementById("noKids");
-const searchEl = document.getElementById("search");
-const backBtn = document.getElementById("backBtn");
-const kidNameEl = document.getElementById("kidName");
-const circlesEl = document.getElementById("circles");
-const goalTextEl = document.getElementById("goalText");
-
-/* State */
-let GOALS = [];
-let KIDS = [];
-
-/* Utils */
-const clampStamps = v => Math.max(0, Math.min(10, Math.floor(Number(v)||0)));
-const clampIndex = (i,len)=>Math.max(0,Math.min(len-1,Number(i)||0));
-
-/* Load goals once */
-async function loadGoals(){
-  const s = await get(ref(db,"ziele/meta"));
-  if(s.exists() && Array.isArray(s.val())){
-    GOALS = s.val().map(x=>String(x).trim()).filter(Boolean);
-  } else {
-    GOALS = [];
-  }
-}
-
-/* Live load kids */
-onValue(ref(db,"kinder"), async snap=>{
-  await loadGoals();
-  KIDS = [];
-  if(snap.exists()){
-    snap.forEach(ch=>{
-      const v = ch.val() || {};
-      KIDS.push({
-        name: ch.key,
-        stamps: clampStamps(v.stamps),
-        activeGoalIndex: Number(v.activeGoalIndex||0)
-      });
+    // Firebase (wie Admin)
+    const app = initializeApp({
+      apiKey: "AIzaSyAdPN2duh89Fx5rmYlFshdf0juhYNX_7fg",
+      authDomain: "punkte-45c20.firebaseapp.com",
+      databaseURL: "https://punkte-45c20-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId: "punkte-45c20",
+      storageBucket: "punkte-45c20.appspot.com",
+      messagingSenderId: "931713539549",
+      appId: "1:931713539549:web:e348bf38369639f1906a34"
     });
-  }
-  renderList();
-});
+    const db = getDatabase(app);
 
-/* Render list */
-function renderList(){
-  const q = (searchEl.value||"").toLowerCase();
-  const filtered = KIDS.filter(k=>k.name.toLowerCase().includes(q));
-  kidListEl.innerHTML = "";
+    // Paths (neu)
+    const PATH_NAMES = "kinder"; // nur keys
+    const PATH_CATALOG = "zielkarte/v1/catalog";
+    const PATH_CHILDREN = "zielkarte/v1/children";
 
-  if(filtered.length===0){
-    noKidsEl.classList.remove("hidden");
-    return;
-  }
-  noKidsEl.classList.add("hidden");
+    // DOM
+    const listView = document.getElementById("listView");
+    const detailView = document.getElementById("detailView");
+    const searchEl = document.getElementById("search");
+    const kidListEl = document.getElementById("kidList");
+    const noKidsEl = document.getElementById("noKids");
 
-  filtered.sort((a,b)=>a.name.localeCompare(b.name,"de"));
-  filtered.forEach(k=>{
-    const btn = document.createElement("div");
-    btn.className = "kidBtn";
-    btn.innerHTML = `
-      <div>${k.name}</div>
-      <div class="kidMeta">${k.stamps}/10</div>
-    `;
-    btn.onclick = ()=>openDetail(k.name);
-    kidListEl.appendChild(btn);
-  });
-}
+    const backBtn = document.getElementById("backBtn");
+    const kidNameEl = document.getElementById("kidName");
+    const circlesEl = document.getElementById("circles");
+    const goalTextEl = document.getElementById("goalText");
+    const noCatalogWarn = document.getElementById("noCatalogWarn");
 
-searchEl.addEventListener("input",renderList);
+    // State
+    let NAMES = [];
+    let catalog = null;
+    let childStates = {};
 
-/* Open detail */
-async function openDetail(name){
-  const s = await get(ref(db,"kinder/"+name));
-  if(!s.exists()) return;
-  const v = s.val()||{};
-  const stamps = clampStamps(v.stamps);
-  const idx = clampIndex(v.activeGoalIndex, GOALS.length);
+    // Utils
+    const clampStamps = (x) => Math.max(0, Math.min(10, Math.floor(Number(x) || 0)));
 
-  kidNameEl.textContent = name;
-  goalTextEl.textContent = GOALS.length ? (GOALS[idx]||"—") : "—";
+    function isoWeekString(date = new Date()){
+      const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+      const dayNum = d.getUTCDay() || 7;
+      d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+      const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+      const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+      return `${d.getUTCFullYear()}-W${String(weekNo).padStart(2,"0")}`;
+    }
+    const CURRENT_WEEK = isoWeekString();
 
-  renderCircles(stamps);
-  toggle(false);
-}
+    function firstGoalId(){
+      return catalog?.goals?.[0]?.id || null;
+    }
+    function getGoalById(id){
+      if(!catalog?.goals?.length) return null;
+      return catalog.goals.find(g => g.id === id) || null;
+    }
 
-/* Circles */
-function renderCircles(stamps){
-  circlesEl.innerHTML = "";
-  for(let i=0;i<10;i++){
-    const d=document.createElement("div");
-    d.className="dot"+(i<stamps?" on":"");
-    circlesEl.appendChild(d);
-  }
-}
+    function toggle(showList){
+      listView.classList.toggle("hidden", !showList);
+      detailView.classList.toggle("hidden", showList);
+    }
 
-/* Navigation */
-backBtn.onclick=()=>toggle(true);
-function toggle(showList){
-  listView.classList.toggle("hidden",!showList);
-  detailView.classList.toggle("hidden",showList);
-}
-</script>
+    function renderCircles(stamps){
+      circlesEl.innerHTML = "";
+      for(let i=0;i<10;i++){
+        const d = document.createElement("div");
+        d.className = "dot" + (i < stamps ? " on" : "");
+        circlesEl.appendChild(d);
+      }
+    }
+
+    function renderList(){
+      const q = (searchEl.value || "").toLowerCase();
+      const filtered = NAMES.filter(n => n.toLowerCase().includes(q)).sort((a,b)=>a.localeCompare(b,'de'));
+
+      kidListEl.innerHTML = "";
+
+      if(filtered.length === 0){
+        noKidsEl.classList.toggle("hidden", NAMES.length !== 0);
+        if(NAMES.length !== 0){
+          // search no hits
+          const div = document.createElement("div");
+          div.className = "empty";
+          div.textContent = "Keine Treffer.";
+          kidListEl.appendChild(div);
+        }
+        return;
+      }
+      noKidsEl.classList.add("hidden");
+
+      for(const name of filtered){
+        const st = childStates[name] || {};
+        const stamps = clampStamps(st.stamps ?? 0);
+
+        const btn = document.createElement("div");
+        btn.className = "kidBtn";
+        btn.innerHTML = `<div>${name}</div><div class="kidMeta">${stamps}/10</div>`;
+        btn.addEventListener("click", ()=>openDetail(name));
+        kidListEl.appendChild(btn);
+      }
+    }
+
+    searchEl.addEventListener("input", renderList);
+    backBtn.addEventListener("click", ()=>toggle(true));
+
+    async function ensureChildStateExists(name){
+      if(childStates[name]) return childStates[name];
+
+      const init = {
+        activeGoalId: firstGoalId(),
+        stamps: 0,
+        noteText: "",
+        noteWeek: CURRENT_WEEK
+      };
+      await set(ref(db, `${PATH_CHILDREN}/${name}`), init);
+      childStates[name] = init;
+      return init;
+    }
+
+    async function openDetail(name){
+      kidNameEl.textContent = name;
+
+      // If no catalog yet, still show page but warn
+      if(!catalog?.goals?.length){
+        noCatalogWarn.classList.remove("hidden");
+        goalTextEl.textContent = "—";
+        renderCircles(0);
+        toggle(false);
+        return;
+      } else {
+        noCatalogWarn.classList.add("hidden");
+      }
+
+      const st = await ensureChildStateExists(name);
+      const stamps = clampStamps(st.stamps ?? 0);
+      const goal = st.activeGoalId ? getGoalById(st.activeGoalId) : null;
+
+      goalTextEl.textContent = goal?.text || "—";
+      renderCircles(stamps);
+      toggle(false);
+    }
+
+    // Live: names only (keys)
+    onValue(ref(db, PATH_NAMES), (snap)=>{
+      const arr = [];
+      if(snap.exists()) snap.forEach(ch => arr.push(ch.key));
+      NAMES = arr;
+      renderList();
+    });
+
+    // Live: catalog
+    onValue(ref(db, PATH_CATALOG), (snap)=>{
+      catalog = snap.exists() ? snap.val() : null;
+      renderList();
+    });
+
+    // Live: states
+    onValue(ref(db, PATH_CHILDREN), (snap)=>{
+      const map = {};
+      if(snap.exists()) snap.forEach(ch => map[ch.key] = ch.val() || {});
+      childStates = map;
+      renderList();
+    });
+  </script>
 </body>
 </html>
