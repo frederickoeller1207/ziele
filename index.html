@@ -1,4 +1,11 @@
-<!-- index.html (Zielkarte v1 – kompatibel mit deinem funktionierenden Admin, Katalog aus Firebase, filtert "~") -->
+<!-- index.html (Zielkarte v1)
+  - Namenliste: nur Kinder ohne "~"
+  - In der Liste: KEINE Anzeige von Stempeln/Ziel
+  - Nach Klick auf Name: erst PIN-Abfrage (db1: gesamt-dae4e /kinder/{name}/code, Sperre: gesperrt + sperrGrund)
+  - Erst nach korrekter PIN: Ziel + grüne Stempel + "es fehlen noch X"
+  - Katalog wird aus db2 gelesen: /zielkarte/v1/catalog (kein Hardcode, kein Publish-Button)
+  - Fortschritt wird aus db2 gelesen: /zielkarte/v1/children/{name}
+-->
 <!DOCTYPE html>
 <html lang="de">
 <head>
@@ -12,7 +19,8 @@
     :root{
       --bg:#f7f8fc; --card:#ffffff; --txt:#111827; --muted:#6b7280;
       --border:#e5e7eb; --radius:18px; --shadow:0 6px 18px rgba(0,0,0,.08);
-      --fill:#111827;
+      --green:#22c55e;
+      --red:#ef4444;
     }
     *{box-sizing:border-box}
     body{
@@ -28,25 +36,25 @@
       box-shadow:var(--shadow); padding:14px; margin-bottom:14px;
     }
     .hidden{display:none}
-
     .search{
       width:100%; padding:14px; border-radius:14px; border:1px solid var(--border);
       font-size:16px; margin-bottom:12px;
     }
-
     .kidList{display:flex; flex-direction:column; gap:12px}
-
     .kidBtn{
-      padding:14px;
+      padding:16px;
       border-radius:18px;
       border:1px solid var(--border);
       background:#fff;
       cursor:pointer;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      font-size:20px;
+      font-weight:900;
     }
     .kidBtn:active{transform:scale(.99)}
-    .kidRow{display:flex; align-items:center; gap:12px}
-    .kidName{font-size:20px; font-weight:900}
-    .kidMeta{font-size:12px; color:var(--muted); font-weight:800}
+    .kidArrow{font-size:14px; color:var(--muted); font-weight:900}
 
     .toolbar{display:flex; align-items:center; gap:10px; margin-bottom:6px}
     .back{
@@ -54,29 +62,16 @@
       padding:10px 14px; font-weight:900; cursor:pointer;
     }
 
-    .mouse{
-      width:46px; height:46px; flex:0 0 auto;
-    }
-
-    .goalText{
-      font-size:18px;
-      font-weight:900;
-      margin-top:10px;
-      line-height:1.25;
-    }
-
-    .stampLine{
-      margin-top:10px;
-      font-size:13px;
-      color:var(--muted);
-      font-weight:800;
-    }
+    .mouse{width:46px; height:46px; display:block; margin:8px auto 0}
+    .kidName{font-size:20px; font-weight:900; text-align:center; margin-top:6px}
+    .goalText{font-size:18px; font-weight:900; text-align:center; margin-top:10px; line-height:1.25}
+    .stampLine{margin-top:10px; font-size:13px; color:var(--muted); font-weight:800; text-align:center}
 
     .circles{
       display:grid;
       grid-template-columns:repeat(10,1fr);
       gap:8px;
-      margin-top:10px;
+      margin-top:12px;
     }
     .dot{
       aspect-ratio:1/1;
@@ -84,7 +79,10 @@
       border:2px solid var(--border);
       background:#fff;
     }
-    .dot.on{ background:var(--fill); border-color:var(--fill); }
+    .dot.on{
+      background:var(--green);
+      border-color:var(--green);
+    }
 
     .empty{
       text-align:center;
@@ -93,7 +91,6 @@
       font-weight:800;
       padding:20px 0;
     }
-
     .warn{
       background:#fff7ed;
       border:1px solid #fed7aa;
@@ -103,6 +100,53 @@
       font-size:12px;
       font-weight:800;
       margin-top:10px;
+    }
+
+    /* PIN Overlay */
+    .overlay{
+      position:fixed; inset:0; background:rgba(0,0,0,.45);
+      display:none; align-items:flex-end; justify-content:center; padding:10px;
+      z-index:9999;
+    }
+    .overlay.show{display:flex}
+    .panel{
+      width:100%; max-width:520px; background:#fff; border-radius:20px;
+      border:1px solid var(--border); box-shadow:0 24px 60px rgba(0,0,0,.28);
+      padding:14px;
+    }
+    .panelTitle{font-weight:950; font-size:18px}
+    .panelSub{color:var(--muted); font-size:12px; font-weight:800; margin-top:2px}
+    .pinInput{
+      width:100%;
+      padding:14px;
+      border-radius:14px;
+      border:1px solid var(--border);
+      font-size:18px;
+      font-weight:900;
+      margin-top:10px;
+    }
+    .row{display:flex; gap:10px; align-items:center; margin-top:10px}
+    .btn{
+      flex:1;
+      border:1px solid var(--border);
+      background:#fff;
+      border-radius:14px;
+      padding:12px 14px;
+      font-weight:900;
+      cursor:pointer;
+    }
+    .btn.primary{background:#007aff; border-color:#007aff; color:#fff}
+    .err{color:var(--red); font-weight:900; font-size:12px; margin-top:8px}
+    .lockedBox{
+      background:#ffecec;
+      border:1px solid var(--red);
+      color:#7a0000;
+      border-radius:14px;
+      padding:10px;
+      margin-top:10px;
+      font-weight:900;
+      font-size:12px;
+      white-space:pre-wrap;
     }
   </style>
 </head>
@@ -116,6 +160,7 @@
       <input id="search" class="search" placeholder="Wähle deinen Namen …" />
       <div id="kidList" class="kidList"></div>
       <div id="noKids" class="empty hidden">Es sind noch keine Kinder vorhanden.</div>
+      <div id="hint" class="warn hidden">Hinweis: Es werden nur Namen angezeigt, die in beiden Datenbanken existieren (Zugang + Zielkarte).</div>
     </div>
 
     <!-- DETAIL VIEW -->
@@ -124,39 +169,63 @@
         <button id="backBtn" class="back">← Zurück</button>
       </div>
 
-      <!-- nur Maus-Symbol, kein "Deine Zielkarte"-Text -->
-      <div style="display:flex; justify-content:center; margin-top:6px">
-        <svg class="mouse" viewBox="0 0 64 64" aria-hidden="true">
-          <circle cx="20" cy="18" r="10" fill="#111827"/>
-          <circle cx="44" cy="18" r="10" fill="#111827"/>
-          <ellipse cx="32" cy="36" rx="18" ry="16" fill="#111827"/>
-          <circle cx="26" cy="34" r="3" fill="#fff"/>
-          <circle cx="38" cy="34" r="3" fill="#fff"/>
-          <circle cx="26" cy="34" r="1.5" fill="#111827"/>
-          <circle cx="38" cy="34" r="1.5" fill="#111827"/>
-          <ellipse cx="32" cy="42" rx="6" ry="4" fill="#fff"/>
-        </svg>
-      </div>
+      <svg class="mouse" viewBox="0 0 64 64" aria-hidden="true">
+        <circle cx="20" cy="18" r="10" fill="#111827"/>
+        <circle cx="44" cy="18" r="10" fill="#111827"/>
+        <ellipse cx="32" cy="36" rx="18" ry="16" fill="#111827"/>
+        <circle cx="26" cy="34" r="3" fill="#fff"/>
+        <circle cx="38" cy="34" r="3" fill="#fff"/>
+        <circle cx="26" cy="34" r="1.5" fill="#111827"/>
+        <circle cx="38" cy="34" r="1.5" fill="#111827"/>
+        <ellipse cx="32" cy="42" rx="6" ry="4" fill="#fff"/>
+      </svg>
 
-      <div id="kidName" class="kidName" style="text-align:center; margin-top:6px">—</div>
-
-      <div id="goalText" class="goalText" style="text-align:center">—</div>
-
-      <div id="stampLine" class="stampLine" style="text-align:center">—</div>
-
+      <div id="kidName" class="kidName">—</div>
+      <div id="goalText" class="goalText">—</div>
+      <div id="stampLine" class="stampLine">—</div>
       <div id="circles" class="circles"></div>
 
       <div id="noCatalogWarn" class="warn hidden">
-        Zielkatalog wurde noch nicht gefunden. Bitte kurz prüfen: <b>/zielkarte/v1/catalog</b>
+        Zielkatalog nicht gefunden. Bitte prüfen: <b>/zielkarte/v1/catalog</b> in der Punkte-Firebase.
+      </div>
+    </div>
+  </div>
+
+  <!-- PIN Overlay -->
+  <div id="pinOverlay" class="overlay" aria-hidden="true">
+    <div class="panel">
+      <div class="panelTitle" id="pinTitle">PIN eingeben</div>
+      <div class="panelSub" id="pinSub">—</div>
+
+      <input id="pinInput" class="pinInput" type="number" inputmode="numeric" placeholder="PIN" />
+
+      <div id="pinLockedBox" class="lockedBox hidden"></div>
+      <div id="pinError" class="err hidden">Falsche PIN.</div>
+
+      <div class="row">
+        <button id="pinCancel" class="btn">Abbrechen</button>
+        <button id="pinOk" class="btn primary">OK</button>
       </div>
     </div>
   </div>
 
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
-    import { getDatabase, ref, get, set, onValue } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-database.js";
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.5.2/firebase-app.js";
+    import { getDatabase, ref, get, onValue, set } from "https://www.gstatic.com/firebasejs/10.5.2/firebase-database.js";
 
-    const app = initializeApp({
+    // === Firebase 1: gesamt-dae4e (Zugang / PIN / Sperre) ===
+    const configAccess = {
+      apiKey:"AIzaSyAQaNKUa-RKvUcwlPpWnEyKxcVjYV6cZuU",
+      authDomain:"gesamt-dae4e.firebaseapp.com",
+      databaseURL:"https://gesamt-dae4e-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId:"gesamt-dae4e",
+      storageBucket:"gesamt-dae4e.appspot.com",
+      messagingSenderId:"844023612743",
+      appId:"1:844023612743:web:0821aa894541f89a7df862"
+    };
+
+    // === Firebase 2: punkte-45c20 (Zielkarte / Katalog / Stempel) ===
+    const configPoints = {
       apiKey: "AIzaSyAdPN2duh89Fx5rmYlFshdf0juhYNX_7fg",
       authDomain: "punkte-45c20.firebaseapp.com",
       databaseURL: "https://punkte-45c20-default-rtdb.europe-west1.firebasedatabase.app",
@@ -164,13 +233,19 @@
       storageBucket: "punkte-45c20.appspot.com",
       messagingSenderId: "931713539549",
       appId: "1:931713539549:web:e348bf38369639f1906a34"
-    });
-    const db = getDatabase(app);
+    };
 
-    // Pfade: Namen alt, Daten neu
-    const PATH_NAMES   = "kinder";               // nur keys
-    const PATH_CATALOG = "zielkarte/v1/catalog"; // veröffentlicht durch Admin
-    const PATH_CHILDREN= "zielkarte/v1/children";
+    const appAccess = initializeApp(configAccess, "accessApp");
+    const dbAccess = getDatabase(appAccess);
+
+    const appPoints = initializeApp(configPoints, "pointsApp");
+    const dbPoints = getDatabase(appPoints);
+
+    // Pfade
+    const PATH_NAMES_OLD = "kinder";                 // (dbPoints) nur Keys
+    const PATH_ACCESS_KIDS = "kinder";              // (dbAccess) hier liegen code/gesperrt/sperrGrund
+    const PATH_CATALOG = "zielkarte/v1/catalog";    // (dbPoints)
+    const PATH_CHILDREN = "zielkarte/v1/children";  // (dbPoints)
 
     // DOM
     const listView = document.getElementById("listView");
@@ -178,6 +253,7 @@
     const searchEl = document.getElementById("search");
     const kidListEl = document.getElementById("kidList");
     const noKidsEl = document.getElementById("noKids");
+    const hintEl = document.getElementById("hint");
 
     const backBtn = document.getElementById("backBtn");
     const kidNameEl = document.getElementById("kidName");
@@ -186,18 +262,30 @@
     const circlesEl = document.getElementById("circles");
     const noCatalogWarn = document.getElementById("noCatalogWarn");
 
+    const pinOverlay = document.getElementById("pinOverlay");
+    const pinTitle = document.getElementById("pinTitle");
+    const pinSub = document.getElementById("pinSub");
+    const pinInput = document.getElementById("pinInput");
+    const pinOk = document.getElementById("pinOk");
+    const pinCancel = document.getElementById("pinCancel");
+    const pinError = document.getElementById("pinError");
+    const pinLockedBox = document.getElementById("pinLockedBox");
+
     // State
-    let NAMES = [];
-    let catalog = null;         // aus Firebase
-    let childStates = {};       // aus Firebase
+    let namesPoints = [];         // aus dbPoints/kinder (Keys)
+    let accessKids = {};          // aus dbAccess/kinder (Obj)
+    let catalog = null;           // aus dbPoints/zielkarte/v1/catalog
+    let childStates = {};         // aus dbPoints/zielkarte/v1/children
+
+    let pendingName = null;       // Name, für den PIN abgefragt wird
 
     // Utils
     const clampStamps = (x) => Math.max(0, Math.min(10, Math.floor(Number(x) || 0)));
 
-    function isValidKidName(name){
+    function isValidName(name){
       const n = String(name || "").trim();
       if(!n) return false;
-      if(n.includes("~")) return false; // Vorgabe
+      if(n.includes("~")) return false;     // Vorgabe
       if(n.length < 2) return false;
       return true;
     }
@@ -207,16 +295,31 @@
       detailView.classList.toggle("hidden", showList);
     }
 
+    function showPin(){
+      pinOverlay.classList.add("show");
+      pinOverlay.setAttribute("aria-hidden","false");
+      pinInput.value = "";
+      pinError.classList.add("hidden");
+      pinLockedBox.classList.add("hidden");
+      setTimeout(()=>pinInput.focus(), 50);
+    }
+    function hidePin(){
+      pinOverlay.classList.remove("show");
+      pinOverlay.setAttribute("aria-hidden","true");
+      pendingName = null;
+    }
+
+    pinOverlay.addEventListener("click", (e)=>{ if(e.target === pinOverlay) hidePin(); });
+    pinCancel.addEventListener("click", hidePin);
+
     function getGoalById(id){
       if(!catalog?.goals?.length) return null;
       return catalog.goals.find(g => g.id === id) || null;
     }
-
     function firstGoalId(){
       return catalog?.goals?.[0]?.id || null;
     }
 
-    // Circles
     function renderCircles(stamps){
       circlesEl.innerHTML = "";
       for(let i=1;i<=10;i++){
@@ -226,18 +329,25 @@
       }
     }
 
-    // Liste (nur Kinder, keine Detail-Infos nötig)
+    // Anzeige: nur Namen (ohne Fortschritt!)
     function renderList(){
       const q = (searchEl.value || "").toLowerCase();
-      const filtered = NAMES
+
+      // Namen sollen idealerweise in beiden DBs existieren (PIN + Zielkarte-Names)
+      // -> wir nehmen Keys aus dbPoints/kinder, aber nur wenn es auch in dbAccess/kinder existiert.
+      const merged = namesPoints.filter(n => accessKids[n] != null);
+
+      hintEl.classList.toggle("hidden", merged.length === namesPoints.length);
+
+      const filtered = merged
         .filter(n => n.toLowerCase().includes(q))
         .sort((a,b)=>a.localeCompare(b,'de'));
 
       kidListEl.innerHTML = "";
 
       if(filtered.length === 0){
-        noKidsEl.classList.toggle("hidden", NAMES.length !== 0);
-        if(NAMES.length !== 0){
+        noKidsEl.classList.toggle("hidden", merged.length !== 0);
+        if(merged.length !== 0){
           const div = document.createElement("div");
           div.className = "empty";
           div.textContent = "Keine Treffer.";
@@ -248,51 +358,82 @@
       noKidsEl.classList.add("hidden");
 
       for(const name of filtered){
-        const st = childStates[name] || {};
-        const stamps = clampStamps(st.stamps ?? 0);
-
         const btn = document.createElement("div");
         btn.className = "kidBtn";
-        btn.innerHTML = `
-          <div class="kidRow">
-            <svg class="mouse" viewBox="0 0 64 64" aria-hidden="true">
-              <circle cx="20" cy="18" r="10" fill="#111827"/>
-              <circle cx="44" cy="18" r="10" fill="#111827"/>
-              <ellipse cx="32" cy="36" rx="18" ry="16" fill="#111827"/>
-              <circle cx="26" cy="34" r="3" fill="#fff"/>
-              <circle cx="38" cy="34" r="3" fill="#fff"/>
-              <circle cx="26" cy="34" r="1.5" fill="#111827"/>
-              <circle cx="38" cy="34" r="1.5" fill="#111827"/>
-              <ellipse cx="32" cy="42" rx="6" ry="4" fill="#fff"/>
-            </svg>
-            <div>
-              <div class="kidName">${name}</div>
-              <div class="kidMeta">${stamps}/10</div>
-            </div>
-            <div style="margin-left:auto" class="kidMeta">›</div>
-          </div>
-        `;
-        btn.addEventListener("click", ()=>openDetail(name));
+        btn.innerHTML = `<div>${name}</div><div class="kidArrow">›</div>`;
+        btn.addEventListener("click", ()=>startPinFlow(name));
         kidListEl.appendChild(btn);
       }
     }
-
     searchEl.addEventListener("input", renderList);
     backBtn.addEventListener("click", ()=>toggle(true));
 
+    // PIN-Flow: Sperrprüfung + Codevergleich (dbAccess)
+    async function startPinFlow(name){
+      pendingName = name;
+      pinTitle.textContent = "PIN eingeben";
+      pinSub.textContent = name;
+
+      showPin();
+
+      // Pre-check: Sperre direkt anzeigen (ohne PIN-Falschraten)
+      const acc = accessKids[name];
+      if(acc && acc.gesperrt === true){
+        pinLockedBox.textContent = `Dein Konto wurde vorübergehend gesperrt.\n\nGrund: ${acc.sperrGrund || "Kein Grund angegeben."}`;
+        pinLockedBox.classList.remove("hidden");
+        pinOk.disabled = true;
+        pinInput.disabled = true;
+      } else {
+        pinOk.disabled = false;
+        pinInput.disabled = false;
+      }
+    }
+
+    async function pinOkHandler(){
+      if(!pendingName) return;
+
+      // Wenn gesperrt: kein Weiter
+      const acc = accessKids[pendingName];
+      if(acc && acc.gesperrt === true) return;
+
+      const entered = String(pinInput.value || "").trim();
+      if(!entered){
+        pinError.textContent = "Bitte PIN eingeben.";
+        pinError.classList.remove("hidden");
+        return;
+      }
+
+      // Code aus dbAccess/kinder/{name}/code
+      // (aus Admin: code wird als String gespeichert)
+      const real = String(acc?.code ?? "").trim();
+
+      if(real && entered === real){
+        pinError.classList.add("hidden");
+        hidePin();
+        await openDetail(pendingName);
+      } else {
+        pinError.textContent = "Falsche PIN.";
+        pinError.classList.remove("hidden");
+        pinInput.select();
+        pinInput.focus();
+      }
+    }
+    pinOk.addEventListener("click", pinOkHandler);
+    pinInput.addEventListener("keydown", (e)=>{ if(e.key === "Enter") pinOkHandler(); });
+
+    // Detail: erst nach PIN, dann Ziele/Stempel anzeigen
     async function ensureChildStateExists(name){
       if(childStates[name]) return childStates[name];
 
-      // wenn katalog fehlt, nicht anlegen (sonst activeGoalId null)
       if(!catalog?.goals?.length) return null;
 
       const init = {
         activeGoalId: firstGoalId(),
         stamps: 0,
         noteText: "",
-        noteWeek: "" // Admin regelt Wochen-Reset, Index muss das nicht anfassen
+        noteWeek: ""
       };
-      await set(ref(db, `${PATH_CHILDREN}/${name}`), init);
+      await set(ref(dbPoints, `${PATH_CHILDREN}/${name}`), init);
       childStates[name] = init;
       return init;
     }
@@ -318,40 +459,63 @@
 
       const goal = st?.activeGoalId ? getGoalById(st.activeGoalId) : null;
       goalTextEl.textContent = goal?.text || "—";
-
       stampLineEl.textContent = `Du hast ${stamps} Stempel. Es fehlen noch ${remaining}.`;
 
       renderCircles(stamps);
       toggle(false);
     }
 
-    // Live: Namen aus /kinder (nur keys), filter "~"
-    onValue(ref(db, PATH_NAMES), (snap)=>{
+    // === Live Listener ===
+
+    // dbPoints: Namen (Keys) aus /kinder
+    onValue(ref(dbPoints, PATH_NAMES_OLD), (snap)=>{
       const arr = [];
       if(snap.exists()){
         snap.forEach(ch=>{
           const name = ch.key;
-          if(isValidKidName(name)) arr.push(name);
+          if(isValidName(name)) arr.push(name);
         });
       }
-      NAMES = arr;
+      namesPoints = arr;
       renderList();
     });
 
-    // Live: katalog aus Firebase
-    onValue(ref(db, PATH_CATALOG), (snap)=>{
+    // dbAccess: Zugangsdaten/PIN/Sperre aus /kinder
+    onValue(ref(dbAccess, PATH_ACCESS_KIDS), (snap)=>{
+      const map = {};
+      if(snap.exists()){
+        snap.forEach(ch=>{
+          const name = ch.key;
+          if(isValidName(name)) map[name] = ch.val() || {};
+        });
+      }
+      accessKids = map;
+      renderList();
+
+      // falls PIN-Overlay offen ist und Konto jetzt gesperrt wurde -> UI aktualisieren
+      if(pendingName && accessKids[pendingName]?.gesperrt === true){
+        pinLockedBox.textContent = `Dein Konto wurde vorübergehend gesperrt.\n\nGrund: ${accessKids[pendingName]?.sperrGrund || "Kein Grund angegeben."}`;
+        pinLockedBox.classList.remove("hidden");
+        pinOk.disabled = true;
+        pinInput.disabled = true;
+      }
+    });
+
+    // dbPoints: Katalog
+    onValue(ref(dbPoints, PATH_CATALOG), (snap)=>{
       catalog = snap.exists() ? snap.val() : null;
       renderList();
     });
 
-    // Live: states aus neuem Pfad
-    onValue(ref(db, PATH_CHILDREN), (snap)=>{
+    // dbPoints: States
+    onValue(ref(dbPoints, PATH_CHILDREN), (snap)=>{
       const map = {};
       if(snap.exists()){
         snap.forEach(ch => map[ch.key] = ch.val() || {});
       }
       childStates = map;
-      renderList();
+      // List bleibt ohne Stempelanzeige, Detail wird live aktualisiert wenn offen
+      // (optional) – wir lassen es so.
     });
   </script>
 </body>
