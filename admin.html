@@ -1,4 +1,11 @@
-<!-- admin.html (Zielkarte v1 – komplett neu, Ziele & Kategorien hardcoded, nutzt nur Namen aus /kinder, filtert "~") -->
+<!-- admin.html (Zielkarte v1) — FIXED: Ziele/Stempel bleiben nach Reload erhalten
+  WICHTIGE FIXES:
+  1) ensureChildStateExists() prüft jetzt IMMER zuerst Firebase (get) und nutzt set() nur wenn Datensatz NICHT existiert.
+     -> verhindert, dass Ziele/Stempel beim Reload auf Default zurückgesetzt werden.
+  2) Katalog wird NICHT mehr automatisch bei jedem Laden überschrieben. Veröffentlichung nur noch per Button.
+     -> verhindert unnötiges Überschreiben; spart auch Writes.
+  3) Debug zeigt Katalog-Status + ob Katalog in DB existiert.
+-->
 <!DOCTYPE html>
 <html lang="de">
 <head>
@@ -76,6 +83,10 @@
       background:#fff7ed; border:1px solid #fed7aa; border-radius:14px; padding:10px;
       color:#9a3412; font-size:12px; font-weight:800;
     }
+    .ok{
+      background:#f0fdf4; border:1px solid #bbf7d0; border-radius:14px; padding:10px;
+      color:#166534; font-size:12px; font-weight:900;
+    }
     .debug{
       background:#0b1220; color:#e5e7eb; border-radius:14px; padding:10px;
       font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;
@@ -91,12 +102,15 @@
     <div class="row">
       <div>
         <div style="font-weight:950;">Zielkatalog (hardcoded)</div>
-        <div class="muted">Speicherort: <b>/zielkarte/v1/catalog</b> (wird beim Öffnen automatisch gesetzt/aktualisiert).</div>
+        <div class="muted">Speicherort: <b>/zielkarte/v1/catalog</b> (nur per Button veröffentlichen).</div>
       </div>
       <div class="spacer"></div>
-      <button id="btnPublish" class="primary">Katalog jetzt veröffentlichen</button>
+      <button id="btnPublish" class="primary">Katalog veröffentlichen</button>
     </div>
     <div id="catalogInfo" class="muted" style="margin-top:10px">—</div>
+    <div id="catalogStatus" class="warn" style="display:none;margin-top:10px">
+      Katalog fehlt in der DB. Bitte einmal „Katalog veröffentlichen“ drücken.
+    </div>
   </div>
 
   <div class="card">
@@ -168,7 +182,7 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
     import { getDatabase, ref, get, set, update, onValue } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-database.js";
 
-    // Firebase (gleich wie vorher)
+    // Firebase (punkte-45c20)
     const app = initializeApp({
       apiKey: "AIzaSyAdPN2duh89Fx5rmYlFshdf0juhYNX_7fg",
       authDomain: "punkte-45c20.firebaseapp.com",
@@ -183,12 +197,11 @@
     // Alte Namen nur lesen:
     const PATH_NAMES = "kinder";
 
-    // Neues System (alles neu):
+    // Neues System:
     const PATH_CATALOG = "zielkarte/v1/catalog";
     const PATH_CHILDREN = "zielkarte/v1/children";
 
     // HARD-CODED KATALOG (Kategorien + Ziele)
-    // Hinweis: IDs stabil halten (nicht ändern), sonst verlieren Kinder ihre Zuordnung.
     const CATALOG = {
       version: 1,
       categories: [
@@ -229,6 +242,8 @@
     // DOM
     const btnPublish = document.getElementById("btnPublish");
     const catalogInfo = document.getElementById("catalogInfo");
+    const catalogStatus = document.getElementById("catalogStatus");
+
     const search = document.getElementById("search");
     const pillWeek = document.getElementById("pillWeek");
     const pillKids = document.getElementById("pillKids");
@@ -256,7 +271,7 @@
 
     // State
     let NAMES = [];            // nur Keys aus /kinder, gefiltert
-    let childStates = {};      // /zielkarte/v1/children
+    let childStates = {};      // /zielkarte/v1/children (Cache)
     let currentName = null;
     let draftStamps = 0;
 
@@ -285,7 +300,7 @@
     function isValidKidName(name){
       const n = String(name || "").trim();
       if(!n) return false;
-      if(n.includes("~")) return false;         // Vorgabe: keine ~ Namen
+      if(n.includes("~")) return false; // Vorgabe
       if(n.length < 2) return false;
       return true;
     }
@@ -293,11 +308,13 @@
     async function publishCatalog(){
       await set(ref(db, PATH_CATALOG), CATALOG);
       catalogInfo.textContent = `Katalog veröffentlicht. Kategorien: ${CATALOG.categories.length}, Ziele: ${CATALOG.goals.length}`;
+      catalogStatus.style.display = "none";
     }
 
     btnPublish.addEventListener("click", async ()=>{
       try{
         await publishCatalog();
+        alert("Katalog veröffentlicht.");
       } catch(e){
         alert("Fehler beim Veröffentlichen: " + (e?.message || String(e)));
       }
@@ -305,7 +322,6 @@
 
     function renderGoalSelect(activeGoalId){
       goalSelect.innerHTML = "";
-      // optgroups by category
       for(const cat of CATALOG.categories){
         const group = document.createElement("optgroup");
         group.label = cat.title;
@@ -336,8 +352,20 @@
       }
     }
 
+    // ✅ FIXED: Existenz wird in Firebase geprüft, set() nur bei NICHT-EXISTENZ
     async function ensureChildStateExists(name){
+      // 1) Wenn Cache vorhanden, ok
       if(childStates[name]) return childStates[name];
+
+      // 2) Firebase prüfen (wichtig beim Reload)
+      const snap = await get(ref(db, `${PATH_CHILDREN}/${name}`));
+      if(snap.exists()){
+        const data = snap.val() || {};
+        childStates[name] = data;
+        return data;
+      }
+
+      // 3) Nur wenn wirklich NICHT vorhanden: initial anlegen
       const init = {
         activeGoalId: firstGoalId(),
         stamps: 0,
@@ -439,8 +467,10 @@
     btnSaveStamps.addEventListener("click", async ()=>{
       if(!currentName) return;
       await update(ref(db, `${PATH_CHILDREN}/${currentName}`), { stamps: draftStamps });
+
       const st = childStates[currentName] || {};
       childStates[currentName] = { ...st, stamps: draftStamps };
+
       const goal = childStates[currentName].activeGoalId ? getGoalById(childStates[currentName].activeGoalId) : null;
       detailMeta.textContent = `${draftStamps}/10 • ${CURRENT_WEEK} • ${(goal?.text || "— kein Ziel —")}`;
       renderKidList();
@@ -455,6 +485,7 @@
       }
       const patch = { activeGoalId: goalId, stamps: 0, noteText: "", noteWeek: CURRENT_WEEK };
       await update(ref(db, `${PATH_CHILDREN}/${currentName}`), patch);
+
       childStates[currentName] = { ...(childStates[currentName] || {}), ...patch };
 
       draftStamps = 0;
@@ -486,7 +517,7 @@
     });
 
     // Live: Namen aus altem Pfad (nur Keys), filter "~"
-    onValue(ref(db, PATH_NAMES), async (snap)=>{
+    onValue(ref(db, PATH_NAMES), (snap)=>{
       const arr = [];
       if(snap.exists()){
         snap.forEach(ch => {
@@ -497,12 +528,7 @@
       NAMES = arr;
       pillKids.textContent = `Kinder: ${NAMES.length}`;
       renderKidList();
-
-      debugEl.textContent =
-        `names: /${PATH_NAMES} -> ${NAMES.length} (gefiltert: "~")\n` +
-        `catalog: hardcoded (${CATALOG.goals.length} goals)\n` +
-        `states: /${PATH_CHILDREN} -> live\n` +
-        `week: ${CURRENT_WEEK}`;
+      renderDebug();
     }, (err)=>{
       debugEl.textContent = "names listener error:\n" + (err?.message || String(err));
     });
@@ -515,19 +541,33 @@
       }
       childStates = map;
       renderKidList();
+      renderDebug();
     }, (err)=>{
       debugEl.textContent = "children listener error:\n" + (err?.message || String(err));
     });
 
-    // Init: Katalog automatisch setzen (damit Index sofort läuft)
-    (async function init(){
-      try{
-        await publishCatalog();
-      } catch(e){
-        // still usable even if catalog write fails (depends on rules)
+    // Check: Katalog existiert in DB?
+    onValue(ref(db, PATH_CATALOG), (snap)=>{
+      const exists = snap.exists();
+      catalogStatus.style.display = exists ? "none" : "block";
+      if(exists){
+        const v = snap.val() || {};
+        catalogInfo.textContent = `Katalog in DB vorhanden (v${v.version ?? "?"}) • Kategorien: ${(v.categories||[]).length} • Ziele: ${(v.goals||[]).length}`;
+      } else {
+        catalogInfo.textContent = `Katalog ist hardcoded: Kategorien ${CATALOG.categories.length}, Ziele ${CATALOG.goals.length}`;
       }
-      catalogInfo.textContent = `Kategorien: ${CATALOG.categories.length} • Ziele: ${CATALOG.goals.length}`;
-    })();
+      renderDebug();
+    });
+
+    function renderDebug(){
+      const lines = [];
+      lines.push(`week: ${CURRENT_WEEK}`);
+      lines.push(`names: /${PATH_NAMES} -> ${NAMES.length} (gefiltert "~")`);
+      lines.push(`states: /${PATH_CHILDREN} -> ${Object.keys(childStates||{}).length}`);
+      lines.push(`catalog hardcoded: cats=${CATALOG.categories.length} goals=${CATALOG.goals.length}`);
+      debugEl.textContent = lines.join("\n");
+    }
+    renderDebug();
   </script>
 </body>
 </html>
