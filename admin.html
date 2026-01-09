@@ -1,3 +1,4 @@
+<!-- admin.html (Zielkarte v1) — FIX: speichert/liest children per ID (n_base64url(name)) + Migration von legacy name-keys -->
 <!DOCTYPE html>
 <html lang="de">
 <head>
@@ -12,8 +13,6 @@
       --bg:#f6f7fb; --card:#ffffff; --txt:#111827; --muted:#6b7280;
       --border:#e5e7eb; --accent:#007aff; --radius:16px;
       --shadow:0 6px 18px rgba(0,0,0,.08); --green:#22c55e;
-      --warnbg:#fff7ed; --warnbd:#fed7aa; --warntx:#9a3412;
-      --err:#ef4444; --ok:#16a34a;
     }
     *{box-sizing:border-box}
     body{
@@ -27,7 +26,7 @@
     }
     .row{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
     .spacer{flex:1}
-    .muted{color:var(--muted); font-size:12px; font-weight:700}
+    .muted{color:var(--muted); font-size:12px; font-weight:800}
     .pill{
       padding:6px 10px; border:1px solid var(--border); border-radius:999px;
       background:#fafafa; font-size:12px; font-weight:900;
@@ -36,14 +35,13 @@
       width:100%; padding:12px 14px; font-size:16px;
       border:1px solid var(--border); border-radius:14px; background:#fff; outline:none;
     }
-    textarea{min-height:96px; resize:vertical}
+    textarea{min-height:100px; resize:vertical}
     button{
       border:1px solid var(--border); background:#fff; border-radius:14px;
       padding:12px 14px; font-weight:900; cursor:pointer;
       -webkit-tap-highlight-color: transparent;
     }
     button.primary{background:var(--accent); border-color:var(--accent); color:#fff}
-    button.danger{background:var(--err); border-color:var(--err); color:#fff}
     button:active{transform:scale(.99)}
     .list{display:flex; flex-direction:column; gap:10px; margin-top:10px}
     .kid{
@@ -52,12 +50,8 @@
       cursor:pointer;
     }
     .kidName{font-weight:900; font-size:16px}
-    .kidMeta{font-size:12px; color:var(--muted); font-weight:800; margin-top:2px}
+    .kidMeta{font-size:12px; color:var(--muted); font-weight:800}
     .divider{height:1px; background:var(--border); margin:12px 0}
-    .warn{
-      background:var(--warnbg); border:1px solid var(--warnbd); border-radius:14px;
-      padding:10px; color:var(--warntx); font-size:12px; font-weight:800;
-    }
 
     .overlay{
       position:fixed; inset:0; background:rgba(0,0,0,.35);
@@ -81,22 +75,15 @@
     }
     .dot.on{background:var(--green); border-color:var(--green)}
 
-    .small{font-size:12px}
-    .btnRow{display:flex; gap:10px; flex-wrap:wrap}
-    .btnRow > button{flex:1 1 120px}
-
-    .topMeta{display:flex; gap:8px; flex-wrap:wrap; align-items:center}
-    .chev{font-size:18px; font-weight:900; color:var(--muted)}
-
-    #toast{
-      position:fixed; left:50%; bottom:18px; transform:translateX(-50%);
-      background:#111827; color:#fff; padding:10px 14px; border-radius:12px;
-      box-shadow:0 10px 30px rgba(0,0,0,.25);
-      display:none; z-index:10000; font-weight:800; font-size:13px;
-      max-width:92%; text-align:center;
+    .warn{
+      background:#fff7ed; border:1px solid #fed7aa; border-radius:14px; padding:10px;
+      color:#9a3412; font-size:12px; font-weight:800;
     }
-    #toast.ok{background:var(--ok)}
-    #toast.err{background:var(--err)}
+    .debug{
+      background:#0b1220; color:#e5e7eb; border-radius:14px; padding:10px;
+      font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;
+      font-size:12px; overflow:auto; white-space:pre-wrap;
+    }
   </style>
 </head>
 
@@ -105,21 +92,32 @@
 
   <div class="card">
     <div class="row">
-      <input id="search" placeholder="Suche nach Namen … (Kinder mit ~ werden ausgeblendet)">
-      <div class="topMeta">
-        <span id="pillWeek" class="pill">Woche: —</span>
-        <span id="pillKids" class="pill">Kinder: —</span>
-        <span id="pillSync" class="pill">Sync: —</span>
+      <div>
+        <div style="font-weight:950;">Zielkatalog (hardcoded)</div>
+        <div class="muted">Speicherort: <b>/zielkarte/v1/catalog</b> (wird beim Öffnen automatisch gesetzt/aktualisiert).</div>
       </div>
+      <div class="spacer"></div>
+      <button id="btnPublish" class="primary">Katalog jetzt veröffentlichen</button>
     </div>
+    <div id="catalogInfo" class="muted" style="margin-top:10px">—</div>
+  </div>
+
+  <div class="card">
+    <div class="row">
+      <input id="search" placeholder="Suche nach Namen … (Kinder mit ~ werden ausgeblendet)">
+      <span id="pillWeek" class="pill">Woche: —</span>
+      <span id="pillKids" class="pill">Kinder: —</span>
+    </div>
+
     <div id="kidsEmpty" class="warn" style="display:none; margin-top:10px">
       Es wurden keine passenden Namen gefunden (ohne ~) unter <b>/kinder</b>.
     </div>
+
     <div id="kidList" class="list"></div>
+
     <div class="divider"></div>
-    <div class="muted small">
-      Neues System: <b>/zielkarte/v1</b> • Namen nur aus <b>/kinder</b> • Speicherung unter sicheren IDs (kein Key-Problem).
-    </div>
+    <div class="muted">Debug:</div>
+    <div id="debug" class="debug" style="margin-top:6px">—</div>
   </div>
 
   <div id="overlay" class="overlay" aria-hidden="true">
@@ -137,12 +135,9 @@
 
       <div style="font-weight:950;">Aktuelles Ziel</div>
       <select id="goalSelect" style="margin-top:8px"></select>
-      <div class="btnRow" style="margin-top:10px">
+      <div class="row" style="margin-top:10px">
         <button id="btnSetGoal" class="primary">Ziel setzen</button>
-        <button id="btnResetAll" class="danger">Alles zurücksetzen</button>
-      </div>
-      <div class="muted small" style="margin-top:6px">
-        „Ziel setzen“: setzt Stempel=0 und Notiz leer (für diese Woche).
+        <span class="muted">Setzt Stempel=0 und leert Notiz.</span>
       </div>
 
       <div class="divider"></div>
@@ -152,9 +147,9 @@
         <div class="spacer"></div>
         <span id="stampsPill" class="pill">Stempel: —/10</span>
       </div>
-      <div class="muted small">Tippe einen Kreis, um den Stand zu setzen.</div>
+      <div class="muted">Tippe Kreis #n, um den Stand zu setzen.</div>
       <div id="circles" class="circles"></div>
-      <div class="btnRow" style="margin-top:10px">
+      <div class="row" style="margin-top:10px">
         <button id="btnMinus">−</button>
         <button id="btnPlus">+</button>
         <button id="btnSaveStamps" class="primary">Stempel speichern</button>
@@ -163,22 +158,18 @@
       <div class="divider"></div>
 
       <div style="font-weight:950;">Notiz (nur diese Woche)</div>
-      <div class="muted small">
-        Wird beim Wochenwechsel automatisch geleert, sobald du das Kind im Admin öffnest.
-      </div>
+      <div class="muted">Freitext. Wird beim Wochenwechsel automatisch geleert, sobald du das Kind im Admin öffnest.</div>
       <textarea id="note" style="margin-top:8px" placeholder="Kurze Notiz …"></textarea>
-      <div class="btnRow" style="margin-top:10px">
+      <div class="row" style="margin-top:10px">
         <button id="btnSaveNote" class="primary">Notiz speichern</button>
         <button id="btnClearNote">Leeren</button>
       </div>
     </div>
   </div>
 
-  <div id="toast"></div>
-
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
-    import { getDatabase, ref, get, set, update, onValue, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-database.js";
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.5.2/firebase-app.js";
+    import { getDatabase, ref, get, set, update, onValue, remove } from "https://www.gstatic.com/firebasejs/10.5.2/firebase-database.js";
 
     /* ===== Firebase (punkte-45c20) ===== */
     const app = initializeApp({
@@ -193,12 +184,11 @@
     const db = getDatabase(app);
 
     /* ===== Pfade ===== */
-    const PATH_NAMES = "kinder";                 // NUR Keys lesen
-    const PATH_BASE  = "zielkarte/v1";
-    const PATH_CHILDREN = `${PATH_BASE}/children`;
-    const PATH_CATALOG  = `${PATH_BASE}/catalog`;
+    const PATH_NAMES    = "kinder";                 // nur Keys (Namen)
+    const PATH_CATALOG  = "zielkarte/v1/catalog";
+    const PATH_CHILDREN = "zielkarte/v1/children";  // children/{id}
 
-    /* ===== Hardcoded Katalog ===== */
+    /* ===== HARD-CODED KATALOG ===== */
     const CATALOG = {
       version: 1,
       categories: [
@@ -237,52 +227,42 @@
     };
 
     /* ===== DOM ===== */
-    const search     = document.getElementById("search");
-    const pillWeek   = document.getElementById("pillWeek");
-    const pillKids   = document.getElementById("pillKids");
-    const pillSync   = document.getElementById("pillSync");
-    const kidsEmpty  = document.getElementById("kidsEmpty");
-    const kidList    = document.getElementById("kidList");
+    const btnPublish  = document.getElementById("btnPublish");
+    const catalogInfo = document.getElementById("catalogInfo");
+    const search      = document.getElementById("search");
+    const pillWeek    = document.getElementById("pillWeek");
+    const pillKids    = document.getElementById("pillKids");
+    const kidsEmpty   = document.getElementById("kidsEmpty");
+    const kidList     = document.getElementById("kidList");
+    const debugEl     = document.getElementById("debug");
 
-    const overlay    = document.getElementById("overlay");
-    const btnClose   = document.getElementById("btnClose");
-    const detailName = document.getElementById("detailName");
-    const detailMeta = document.getElementById("detailMeta");
+    const overlay     = document.getElementById("overlay");
+    const btnClose    = document.getElementById("btnClose");
+    const detailName  = document.getElementById("detailName");
+    const detailMeta  = document.getElementById("detailMeta");
 
-    const goalSelect     = document.getElementById("goalSelect");
-    const btnSetGoal     = document.getElementById("btnSetGoal");
-    const btnResetAll    = document.getElementById("btnResetAll");
+    const goalSelect  = document.getElementById("goalSelect");
+    const btnSetGoal  = document.getElementById("btnSetGoal");
 
-    const circlesEl      = document.getElementById("circles");
-    const stampsPill     = document.getElementById("stampsPill");
-    const btnMinus       = document.getElementById("btnMinus");
-    const btnPlus        = document.getElementById("btnPlus");
-    const btnSaveStamps  = document.getElementById("btnSaveStamps");
+    const circlesEl   = document.getElementById("circles");
+    const stampsPill  = document.getElementById("stampsPill");
+    const btnMinus    = document.getElementById("btnMinus");
+    const btnPlus     = document.getElementById("btnPlus");
+    const btnSaveStamps = document.getElementById("btnSaveStamps");
 
-    const noteEl         = document.getElementById("note");
-    const btnSaveNote    = document.getElementById("btnSaveNote");
-    const btnClearNote   = document.getElementById("btnClearNote");
-
-    const toastEl        = document.getElementById("toast");
+    const noteEl      = document.getElementById("note");
+    const btnSaveNote = document.getElementById("btnSaveNote");
+    const btnClearNote= document.getElementById("btnClearNote");
 
     /* ===== State ===== */
-    let NAMES = [];                 // Anzeige-Namen aus /kinder (gefiltert)
-    let statesById = {};            // /zielkarte/v1/children/{id}
+    let NAMES = [];            // /kinder keys (gefiltert)
+    let statesById = {};       // /zielkarte/v1/children map: id -> state
     let currentName = null;
-    let currentId = null;
+    let currentId   = null;
     let draftStamps = 0;
 
     /* ===== Utils ===== */
     const clampStamps = (x) => Math.max(0, Math.min(10, Math.floor(Number(x) || 0)));
-
-    function showToast(msg, type="ok", ms=2600){
-      toastEl.className = "";
-      toastEl.classList.add(type === "err" ? "err" : "ok");
-      toastEl.textContent = msg;
-      toastEl.style.display = "block";
-      clearTimeout(showToast._t);
-      showToast._t = setTimeout(()=>toastEl.style.display="none", ms);
-    }
 
     function isoWeekString(date = new Date()){
       const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
@@ -295,6 +275,16 @@
     const CURRENT_WEEK = isoWeekString();
     pillWeek.textContent = `Woche: ${CURRENT_WEEK}`;
 
+    function showOverlay(){ overlay.classList.add("show"); overlay.setAttribute("aria-hidden","false"); }
+    function hideOverlay(){
+      overlay.classList.remove("show");
+      overlay.setAttribute("aria-hidden","true");
+      currentName = null;
+      currentId = null;
+    }
+    btnClose.addEventListener("click", hideOverlay);
+    overlay.addEventListener("click", (e)=>{ if(e.target === overlay) hideOverlay(); });
+
     function isValidKidName(name){
       const n = String(name || "").trim();
       if(!n) return false;
@@ -306,7 +296,7 @@
     function firstGoalId(){ return CATALOG.goals[0]?.id || null; }
     function getGoalById(id){ return CATALOG.goals.find(g => g.id === id) || null; }
 
-    // SAFE KEY: base64url(name) -> erlaubt als Firebase Key (keine . # $ [ ] /)
+    // EXACT gleiche ID-Logik wie im Index
     function toBase64Url(str){
       const utf8 = new TextEncoder().encode(str);
       let bin = "";
@@ -318,29 +308,14 @@
       return "n_" + toBase64Url(String(name || "").trim());
     }
 
-    function showOverlay(){
-      overlay.classList.add("show");
-      overlay.setAttribute("aria-hidden","false");
+    async function publishCatalog(){
+      await set(ref(db, PATH_CATALOG), CATALOG);
+      catalogInfo.textContent = `Katalog veröffentlicht. Kategorien: ${CATALOG.categories.length}, Ziele: ${CATALOG.goals.length}`;
     }
-    function hideOverlay(){
-      overlay.classList.remove("show");
-      overlay.setAttribute("aria-hidden","true");
-      currentName = null;
-      currentId = null;
-    }
-    btnClose.addEventListener("click", hideOverlay);
-    overlay.addEventListener("click", (e)=>{ if(e.target === overlay) hideOverlay(); });
-
-    async function ensureCatalogPublished(){
-      try{
-        const snap = await get(ref(db, PATH_CATALOG));
-        if(!snap.exists() || (snap.val()?.version !== CATALOG.version)){
-          await set(ref(db, PATH_CATALOG), CATALOG);
-        }
-      } catch(e){
-        // Wenn Rules das verbieten: egal – Admin nutzt Hardcode trotzdem
-      }
-    }
+    btnPublish.addEventListener("click", async ()=>{
+      try{ await publishCatalog(); }
+      catch(e){ alert("Fehler beim Veröffentlichen: " + (e?.message || String(e))); }
+    });
 
     function renderGoalSelect(activeGoalId){
       goalSelect.innerHTML = "";
@@ -374,31 +349,57 @@
       }
     }
 
-    async function ensureChildStateExists(name){
+    // Migration: falls alter State unter /children/{NAME} existiert -> nach /children/{ID} kopieren
+    async function migrateLegacyIfNeeded(name){
       const id = idForName(name);
-      const existing = statesById[id];
-      if(existing) return { id, st: existing };
+      if(statesById[id]) return; // schon vorhanden
+
+      const legacyRef = ref(db, `${PATH_CHILDREN}/${name}`);
+      const legacySnap = await get(legacyRef);
+      if(!legacySnap.exists()) return;
+
+      const legacy = legacySnap.val() || {};
+      const migrated = {
+        displayName: legacy.displayName || name,
+        activeGoalId: legacy.activeGoalId || firstGoalId(),
+        stamps: clampStamps(legacy.stamps ?? 0),
+        noteText: legacy.noteText || "",
+        noteWeek: legacy.noteWeek || ""
+      };
+
+      await set(ref(db, `${PATH_CHILDREN}/${id}`), migrated);
+      // optional: legacy löschen, damit keine Verwirrung bleibt:
+      // await remove(legacyRef);
+
+      statesById[id] = migrated;
+    }
+
+    async function ensureStateExists(name){
+      const id = idForName(name);
+      if(statesById[id]) return { id, st: statesById[id] };
+
+      // erst versuchen zu migrieren (falls es alte Daten unter name gibt)
+      await migrateLegacyIfNeeded(name);
+      if(statesById[id]) return { id, st: statesById[id] };
 
       const init = {
-        displayName: name,           // nur zur Info
+        displayName: name,
         activeGoalId: firstGoalId(),
         stamps: 0,
         noteText: "",
-        noteWeek: CURRENT_WEEK,
-        updatedAt: serverTimestamp()
+        noteWeek: CURRENT_WEEK
       };
-
-      // WICHTIG: wenn das scheitert, zeigen wir Fehler (damit du siehst, was los ist)
       await set(ref(db, `${PATH_CHILDREN}/${id}`), init);
-
+      statesById[id] = init;
       return { id, st: init };
     }
 
     async function ensureNoteCurrentWeek(id, st){
       if((st.noteWeek || "") === CURRENT_WEEK) return st;
-      const patch = { noteText: "", noteWeek: CURRENT_WEEK, updatedAt: serverTimestamp() };
+      const patch = { noteText: "", noteWeek: CURRENT_WEEK };
       await update(ref(db, `${PATH_CHILDREN}/${id}`), patch);
-      return { ...st, ...patch };
+      statesById[id] = { ...st, ...patch };
+      return statesById[id];
     }
 
     function renderKidList(){
@@ -409,40 +410,32 @@
 
       kidList.innerHTML = "";
 
-      if(NAMES.length === 0){
-        kidsEmpty.style.display = "block";
-        pillKids.textContent = "Kinder: 0";
-        return;
-      } else {
-        kidsEmpty.style.display = "none";
-      }
-
       if(filtered.length === 0){
-        const div = document.createElement("div");
-        div.className = "warn";
-        div.textContent = "Keine Treffer für die Suche.";
-        kidList.appendChild(div);
-        pillKids.textContent = `Kinder: ${NAMES.length}`;
+        kidsEmpty.style.display = NAMES.length ? "none" : "block";
+        if(NAMES.length){
+          const div = document.createElement("div");
+          div.className = "warn";
+          div.textContent = "Keine Treffer für die Suche.";
+          kidList.appendChild(div);
+        }
         return;
       }
+      kidsEmpty.style.display = "none";
 
       for(const name of filtered){
         const id = idForName(name);
         const st = statesById[id] || {};
         const stamps = clampStamps(st.stamps ?? 0);
-
-        // Anzeige-Fallback: wenn noch kein State existiert → erstes Ziel anzeigen
-        const effectiveGoalId = st.activeGoalId || firstGoalId();
-        const goal = effectiveGoalId ? getGoalById(effectiveGoalId) : null;
+        const goal = st.activeGoalId ? getGoalById(st.activeGoalId) : null;
 
         const el = document.createElement("div");
         el.className = "kid";
         el.innerHTML = `
           <div>
             <div class="kidName">${name}</div>
-            <div class="kidMeta">${stamps}/10 • ${(goal?.text || "—")}</div>
+            <div class="kidMeta">${stamps}/10 • ${(goal?.text || "— kein Ziel —")}</div>
           </div>
-          <div class="chev">›</div>
+          <div class="kidMeta">›</div>
         `;
         el.addEventListener("click", ()=>openKid(name));
         kidList.appendChild(el);
@@ -450,36 +443,31 @@
 
       pillKids.textContent = `Kinder: ${NAMES.length}`;
     }
+
     search.addEventListener("input", renderKidList);
 
     async function openKid(name){
-      try{
-        currentName = name;
-        detailName.textContent = name;
+      currentName = name;
+      const ensured = await ensureStateExists(name);
+      currentId = ensured.id;
 
-        const { id, st: raw } = await ensureChildStateExists(name);
-        currentId = id;
+      let st = ensured.st;
+      st = await ensureNoteCurrentWeek(currentId, st);
 
-        const st = await ensureNoteCurrentWeek(id, raw);
+      const stamps = clampStamps(st.stamps ?? 0);
+      draftStamps = stamps;
 
-        const stamps = clampStamps(st.stamps ?? 0);
-        draftStamps = stamps;
+      const goal = st.activeGoalId ? getGoalById(st.activeGoalId) : null;
 
-        const effectiveGoalId = st.activeGoalId || firstGoalId();
-        const goal = effectiveGoalId ? getGoalById(effectiveGoalId) : null;
+      detailName.textContent = name;
+      detailMeta.textContent = `${stamps}/10 • ${CURRENT_WEEK} • ${(goal?.text || "— kein Ziel —")}`;
 
-        detailMeta.textContent = `${stamps}/10 • ${CURRENT_WEEK} • ${(goal?.text || "—")}`;
+      renderGoalSelect(st.activeGoalId);
+      stampsPill.textContent = `Stempel: ${stamps}/10`;
+      renderCircles(stamps);
+      noteEl.value = st.noteText || "";
 
-        renderGoalSelect(effectiveGoalId);
-        stampsPill.textContent = `Stempel: ${stamps}/10`;
-        renderCircles(stamps);
-
-        noteEl.value = st.noteText || "";
-
-        showOverlay();
-      } catch(e){
-        showToast("Speichern/Anlegen fehlgeschlagen: " + (e?.message || String(e)), "err", 4200);
-      }
+      showOverlay();
     }
 
     btnMinus.addEventListener("click", ()=>{
@@ -498,135 +486,103 @@
 
     btnSaveStamps.addEventListener("click", async ()=>{
       if(!currentId) return;
-      try{
-        await update(ref(db, `${PATH_CHILDREN}/${currentId}`), {
-          stamps: draftStamps,
-          updatedAt: serverTimestamp()
-        });
-        showToast("Stempel gespeichert ✅", "ok");
-      } catch(e){
-        showToast("Stempel speichern fehlgeschlagen: " + (e?.message || String(e)), "err", 4200);
-      }
+      await update(ref(db, `${PATH_CHILDREN}/${currentId}`), { stamps: draftStamps });
+
+      const st = statesById[currentId] || {};
+      statesById[currentId] = { ...st, stamps: draftStamps };
+
+      const goal = statesById[currentId].activeGoalId ? getGoalById(statesById[currentId].activeGoalId) : null;
+      detailMeta.textContent = `${draftStamps}/10 • ${CURRENT_WEEK} • ${(goal?.text || "— kein Ziel —")}`;
+      renderKidList();
     });
 
     btnSetGoal.addEventListener("click", async ()=>{
       if(!currentId) return;
       const goalId = goalSelect.value || firstGoalId();
-      if(!goalId){ showToast("Kein Ziel verfügbar.", "err"); return; }
-      try{
-        await update(ref(db, `${PATH_CHILDREN}/${currentId}`), {
-          displayName: currentName,
-          activeGoalId: goalId,
-          stamps: 0,
-          noteText: "",
-          noteWeek: CURRENT_WEEK,
-          updatedAt: serverTimestamp()
-        });
-        draftStamps = 0;
-        stampsPill.textContent = "Stempel: 0/10";
-        renderCircles(0);
-        noteEl.value = "";
-        const goal = getGoalById(goalId);
-        detailMeta.textContent = `0/10 • ${CURRENT_WEEK} • ${(goal?.text || "—")}`;
-        showToast("Ziel gesetzt ✅", "ok");
-      } catch(e){
-        showToast("Ziel setzen fehlgeschlagen: " + (e?.message || String(e)), "err", 4200);
-      }
-    });
+      if(!goalId){ alert("Kein Ziel verfügbar."); return; }
 
-    btnResetAll.addEventListener("click", async ()=>{
-      if(!currentId) return;
-      const ok = confirm("Alles für dieses Kind zurücksetzen?\n\n- Ziel: Standard\n- Stempel: 0\n- Notiz: leer");
-      if(!ok) return;
-      try{
-        await set(ref(db, `${PATH_CHILDREN}/${currentId}`), {
-          displayName: currentName,
-          activeGoalId: firstGoalId(),
-          stamps: 0,
-          noteText: "",
-          noteWeek: CURRENT_WEEK,
-          updatedAt: serverTimestamp()
-        });
-        draftStamps = 0;
-        renderGoalSelect(firstGoalId());
-        stampsPill.textContent = "Stempel: 0/10";
-        renderCircles(0);
-        noteEl.value = "";
-        const goal = getGoalById(firstGoalId());
-        detailMeta.textContent = `0/10 • ${CURRENT_WEEK} • ${(goal?.text || "—")}`;
-        showToast("Zurückgesetzt ✅", "ok");
-      } catch(e){
-        showToast("Reset fehlgeschlagen: " + (e?.message || String(e)), "err", 4200);
-      }
+      const patch = { activeGoalId: goalId, stamps: 0, noteText: "", noteWeek: CURRENT_WEEK };
+      await update(ref(db, `${PATH_CHILDREN}/${currentId}`), patch);
+      statesById[currentId] = { ...(statesById[currentId] || {}), ...patch };
+
+      draftStamps = 0;
+      stampsPill.textContent = "Stempel: 0/10";
+      renderCircles(0);
+      noteEl.value = "";
+
+      const goal = getGoalById(goalId);
+      detailMeta.textContent = `0/10 • ${CURRENT_WEEK} • ${(goal?.text || "— kein Ziel —")}`;
+      renderKidList();
     });
 
     btnSaveNote.addEventListener("click", async ()=>{
       if(!currentId) return;
-      try{
-        const text = (noteEl.value || "").trim();
-        await update(ref(db, `${PATH_CHILDREN}/${currentId}`), {
-          noteText: text,
-          noteWeek: CURRENT_WEEK,
-          updatedAt: serverTimestamp()
-        });
-        showToast("Notiz gespeichert ✅", "ok");
-      } catch(e){
-        showToast("Notiz speichern fehlgeschlagen: " + (e?.message || String(e)), "err", 4200);
-      }
+      const text = (noteEl.value || "").trim();
+      const patch = { noteText: text, noteWeek: CURRENT_WEEK };
+      await update(ref(db, `${PATH_CHILDREN}/${currentId}`), patch);
+      statesById[currentId] = { ...(statesById[currentId] || {}), ...patch };
+      renderKidList();
     });
 
     btnClearNote.addEventListener("click", async ()=>{
       noteEl.value = "";
       if(!currentId) return;
-      try{
-        await update(ref(db, `${PATH_CHILDREN}/${currentId}`), {
-          noteText: "",
-          noteWeek: CURRENT_WEEK,
-          updatedAt: serverTimestamp()
-        });
-        showToast("Notiz geleert ✅", "ok");
-      } catch(e){
-        showToast("Leeren fehlgeschlagen: " + (e?.message || String(e)), "err", 4200);
-      }
+      const patch = { noteText: "", noteWeek: CURRENT_WEEK };
+      await update(ref(db, `${PATH_CHILDREN}/${currentId}`), patch);
+      statesById[currentId] = { ...(statesById[currentId] || {}), ...patch };
+      renderKidList();
     });
 
-    // ===== Realtime: Namen (nur Keys) =====
-    onValue(ref(db, PATH_NAMES), (snap)=>{
+    // Live: Namen aus /kinder (nur Keys), filter "~"
+    onValue(ref(db, PATH_NAMES), async (snap)=>{
       const arr = [];
       if(snap.exists()){
-        snap.forEach(ch=>{
+        snap.forEach(ch => {
           const name = ch.key;
           if(isValidKidName(name)) arr.push(name);
         });
       }
       NAMES = arr;
+      pillKids.textContent = `Kinder: ${NAMES.length}`;
       renderKidList();
+
+      debugEl.textContent =
+        `names: /${PATH_NAMES} -> ${NAMES.length} (gefiltert: "~")\n` +
+        `children: /${PATH_CHILDREN} -> per ID (n_...)\n` +
+        `week: ${CURRENT_WEEK}`;
     }, (err)=>{
-      pillSync.textContent = "Sync: Fehler (names)";
-      showToast("Listener Fehler (names): " + (err?.message || String(err)), "err", 5000);
+      debugEl.textContent = "names listener error:\n" + (err?.message || String(err));
     });
 
-    // ===== Realtime: States =====
+    // Live: States (neuer Pfad) — children/{id}
     onValue(ref(db, PATH_CHILDREN), (snap)=>{
       const map = {};
       if(snap.exists()){
-        snap.forEach(ch=>{
-          map[ch.key] = ch.val() || {};
-        });
+        snap.forEach(ch => map[ch.key] = ch.val() || {});
       }
       statesById = map;
-      pillSync.textContent = "Sync: live ✅";
       renderKidList();
+
+      // falls gerade offen: Meta live aktualisieren
+      if(currentId && overlay.classList.contains("show")){
+        const st = statesById[currentId] || {};
+        const stamps = clampStamps(st.stamps ?? 0);
+        draftStamps = stamps;
+        const goal = st.activeGoalId ? getGoalById(st.activeGoalId) : null;
+        detailMeta.textContent = `${stamps}/10 • ${CURRENT_WEEK} • ${(goal?.text || "— kein Ziel —")}`;
+        stampsPill.textContent = `Stempel: ${stamps}/10`;
+        renderGoalSelect(st.activeGoalId);
+        renderCircles(stamps);
+        noteEl.value = st.noteText || "";
+      }
     }, (err)=>{
-      pillSync.textContent = "Sync: Fehler (states)";
-      showToast("Listener Fehler (states): " + (err?.message || String(err)), "err", 5000);
+      debugEl.textContent = "children listener error:\n" + (err?.message || String(err));
     });
 
-    // ===== Init =====
+    // Init: Katalog automatisch setzen
     (async function init(){
-      await ensureCatalogPublished();
-      renderGoalSelect(firstGoalId());
-      pillSync.textContent = "Sync: startet…";
+      try{ await publishCatalog(); } catch(e){ /* ignore */ }
+      catalogInfo.textContent = `Kategorien: ${CATALOG.categories.length} • Ziele: ${CATALOG.goals.length}`;
     })();
   </script>
 </body>
