@@ -1,4 +1,3 @@
-<!-- admin.html (Zielkarte v1) — FIX: speichert/liest children per ID (n_base64url(name)) + Migration von legacy name-keys -->
 <!DOCTYPE html>
 <html lang="de">
 <head>
@@ -12,7 +11,7 @@
     :root{
       --bg:#f6f7fb; --card:#ffffff; --txt:#111827; --muted:#6b7280;
       --border:#e5e7eb; --accent:#007aff; --radius:16px;
-      --shadow:0 6px 18px rgba(0,0,0,.08); --green:#22c55e;
+      --shadow:0 6px 18px rgba(0,0,0,.08); --green:#22c55e; --red:#ef4444;
     }
     *{box-sizing:border-box}
     body{
@@ -26,7 +25,7 @@
     }
     .row{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
     .spacer{flex:1}
-    .muted{color:var(--muted); font-size:12px; font-weight:800}
+    .muted{color:var(--muted); font-size:12px; font-weight:700}
     .pill{
       padding:6px 10px; border:1px solid var(--border); border-radius:999px;
       background:#fafafa; font-size:12px; font-weight:900;
@@ -39,9 +38,9 @@
     button{
       border:1px solid var(--border); background:#fff; border-radius:14px;
       padding:12px 14px; font-weight:900; cursor:pointer;
-      -webkit-tap-highlight-color: transparent;
     }
     button.primary{background:var(--accent); border-color:var(--accent); color:#fff}
+    button.danger{background:var(--red); border-color:var(--red); color:#fff}
     button:active{transform:scale(.99)}
     .list{display:flex; flex-direction:column; gap:10px; margin-top:10px}
     .kid{
@@ -56,7 +55,6 @@
     .overlay{
       position:fixed; inset:0; background:rgba(0,0,0,.35);
       display:none; align-items:flex-end; justify-content:center; padding:10px;
-      z-index:9999;
     }
     .overlay.show{display:flex}
     .panel{
@@ -70,8 +68,7 @@
     .circles{display:grid; grid-template-columns:repeat(10,1fr); gap:8px; margin-top:10px}
     .dot{
       width:100%; aspect-ratio:1/1; border-radius:999px; border:2px solid var(--border);
-      background:#fff; cursor:pointer; user-select:none;
-      -webkit-tap-highlight-color: transparent;
+      background:#fff; cursor:pointer; user-select:none; -webkit-tap-highlight-color: transparent;
     }
     .dot.on{background:var(--green); border-color:var(--green)}
 
@@ -94,10 +91,10 @@
     <div class="row">
       <div>
         <div style="font-weight:950;">Zielkatalog (hardcoded)</div>
-        <div class="muted">Speicherort: <b>/zielkarte/v1/catalog</b> (wird beim Öffnen automatisch gesetzt/aktualisiert).</div>
+        <div class="muted">Speicherort: <b>/zielkarte/v1/catalog</b> (wird beim Laden gesetzt, wenn leer).</div>
       </div>
       <div class="spacer"></div>
-      <button id="btnPublish" class="primary">Katalog jetzt veröffentlichen</button>
+      <button id="btnPublish" class="primary">Katalog veröffentlichen</button>
     </div>
     <div id="catalogInfo" class="muted" style="margin-top:10px">—</div>
   </div>
@@ -164,14 +161,17 @@
         <button id="btnSaveNote" class="primary">Notiz speichern</button>
         <button id="btnClearNote">Leeren</button>
       </div>
+
+      <div class="divider"></div>
+      <button id="btnForceReload" class="danger" style="width:100%">Aktualisieren (neu laden)</button>
     </div>
   </div>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.5.2/firebase-app.js";
-    import { getDatabase, ref, get, set, update, onValue, remove } from "https://www.gstatic.com/firebasejs/10.5.2/firebase-database.js";
+    import { getDatabase, ref, get, set, update, onValue } from "https://www.gstatic.com/firebasejs/10.5.2/firebase-database.js";
 
-    /* ===== Firebase (punkte-45c20) ===== */
+    // Firebase: punkte-45c20
     const app = initializeApp({
       apiKey: "AIzaSyAdPN2duh89Fx5rmYlFshdf0juhYNX_7fg",
       authDomain: "punkte-45c20.firebaseapp.com",
@@ -183,12 +183,14 @@
     });
     const db = getDatabase(app);
 
-    /* ===== Pfade ===== */
-    const PATH_NAMES    = "kinder";                 // nur Keys (Namen)
-    const PATH_CATALOG  = "zielkarte/v1/catalog";
-    const PATH_CHILDREN = "zielkarte/v1/children";  // children/{id}
+    // Namen nur lesen
+    const PATH_NAMES = "kinder";
 
-    /* ===== HARD-CODED KATALOG ===== */
+    // Neues System
+    const PATH_CATALOG  = "zielkarte/v1/catalog";
+    const PATH_CHILDREN = "zielkarte/v1/children"; // children/{NAME}
+
+    // HARD-CODED KATALOG
     const CATALOG = {
       version: 1,
       categories: [
@@ -226,7 +228,7 @@
       ]
     };
 
-    /* ===== DOM ===== */
+    // DOM
     const btnPublish  = document.getElementById("btnPublish");
     const catalogInfo = document.getElementById("catalogInfo");
     const search      = document.getElementById("search");
@@ -238,6 +240,7 @@
 
     const overlay     = document.getElementById("overlay");
     const btnClose    = document.getElementById("btnClose");
+    const btnForceReload = document.getElementById("btnForceReload");
     const detailName  = document.getElementById("detailName");
     const detailMeta  = document.getElementById("detailMeta");
 
@@ -254,14 +257,11 @@
     const btnSaveNote = document.getElementById("btnSaveNote");
     const btnClearNote= document.getElementById("btnClearNote");
 
-    /* ===== State ===== */
-    let NAMES = [];            // /kinder keys (gefiltert)
-    let statesById = {};       // /zielkarte/v1/children map: id -> state
+    // State
+    let NAMES = [];
     let currentName = null;
-    let currentId   = null;
     let draftStamps = 0;
 
-    /* ===== Utils ===== */
     const clampStamps = (x) => Math.max(0, Math.min(10, Math.floor(Number(x) || 0)));
 
     function isoWeekString(date = new Date()){
@@ -276,14 +276,13 @@
     pillWeek.textContent = `Woche: ${CURRENT_WEEK}`;
 
     function showOverlay(){ overlay.classList.add("show"); overlay.setAttribute("aria-hidden","false"); }
-    function hideOverlay(){
-      overlay.classList.remove("show");
-      overlay.setAttribute("aria-hidden","true");
-      currentName = null;
-      currentId = null;
-    }
+    function hideOverlay(){ overlay.classList.remove("show"); overlay.setAttribute("aria-hidden","true"); currentName = null; }
     btnClose.addEventListener("click", hideOverlay);
     overlay.addEventListener("click", (e)=>{ if(e.target === overlay) hideOverlay(); });
+    btnForceReload.addEventListener("click", ()=>location.reload());
+
+    function firstGoalId(){ return CATALOG.goals[0]?.id || null; }
+    function getGoalById(id){ return CATALOG.goals.find(g => g.id === id) || null; }
 
     function isValidKidName(name){
       const n = String(name || "").trim();
@@ -293,28 +292,25 @@
       return true;
     }
 
-    function firstGoalId(){ return CATALOG.goals[0]?.id || null; }
-    function getGoalById(id){ return CATALOG.goals.find(g => g.id === id) || null; }
-
-    // EXACT gleiche ID-Logik wie im Index
-    function toBase64Url(str){
-      const utf8 = new TextEncoder().encode(str);
-      let bin = "";
-      utf8.forEach(b => bin += String.fromCharCode(b));
-      const b64 = btoa(bin);
-      return b64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
-    }
-    function idForName(name){
-      return "n_" + toBase64Url(String(name || "").trim());
+    async function publishCatalog(force=false){
+      const catRef = ref(db, PATH_CATALOG);
+      const snap = await get(catRef);
+      if(!snap.exists() || force){
+        await set(catRef, CATALOG);
+      }
+      const v = (snap.exists() && !force) ? snap.val() : CATALOG;
+      const cats = v?.categories?.length ?? CATALOG.categories.length;
+      const goals = v?.goals?.length ?? CATALOG.goals.length;
+      catalogInfo.textContent = `Kategorien: ${cats} • Ziele: ${goals}`;
     }
 
-    async function publishCatalog(){
-      await set(ref(db, PATH_CATALOG), CATALOG);
-      catalogInfo.textContent = `Katalog veröffentlicht. Kategorien: ${CATALOG.categories.length}, Ziele: ${CATALOG.goals.length}`;
-    }
     btnPublish.addEventListener("click", async ()=>{
-      try{ await publishCatalog(); }
-      catch(e){ alert("Fehler beim Veröffentlichen: " + (e?.message || String(e))); }
+      try{
+        await publishCatalog(true);
+        alert("Katalog veröffentlicht.");
+      }catch(e){
+        alert("Fehler beim Veröffentlichen: " + (e?.message || String(e)));
+      }
     });
 
     function renderGoalSelect(activeGoalId){
@@ -349,57 +345,33 @@
       }
     }
 
-    // Migration: falls alter State unter /children/{NAME} existiert -> nach /children/{ID} kopieren
-    async function migrateLegacyIfNeeded(name){
-      const id = idForName(name);
-      if(statesById[id]) return; // schon vorhanden
-
-      const legacyRef = ref(db, `${PATH_CHILDREN}/${name}`);
-      const legacySnap = await get(legacyRef);
-      if(!legacySnap.exists()) return;
-
-      const legacy = legacySnap.val() || {};
-      const migrated = {
-        displayName: legacy.displayName || name,
-        activeGoalId: legacy.activeGoalId || firstGoalId(),
-        stamps: clampStamps(legacy.stamps ?? 0),
-        noteText: legacy.noteText || "",
-        noteWeek: legacy.noteWeek || ""
-      };
-
-      await set(ref(db, `${PATH_CHILDREN}/${id}`), migrated);
-      // optional: legacy löschen, damit keine Verwirrung bleibt:
-      // await remove(legacyRef);
-
-      statesById[id] = migrated;
+    // WICHTIG: Existenz immer per get() prüfen, nicht per local cache
+    async function loadChildStateFresh(name){
+      const childRef = ref(db, `${PATH_CHILDREN}/${name}`);
+      const snap = await get(childRef);
+      if(snap.exists()) return snap.val() || {};
+      return null;
     }
 
-    async function ensureStateExists(name){
-      const id = idForName(name);
-      if(statesById[id]) return { id, st: statesById[id] };
-
-      // erst versuchen zu migrieren (falls es alte Daten unter name gibt)
-      await migrateLegacyIfNeeded(name);
-      if(statesById[id]) return { id, st: statesById[id] };
+    async function ensureChildStateExists(name){
+      const existing = await loadChildStateFresh(name);
+      if(existing) return existing;
 
       const init = {
-        displayName: name,
         activeGoalId: firstGoalId(),
         stamps: 0,
         noteText: "",
         noteWeek: CURRENT_WEEK
       };
-      await set(ref(db, `${PATH_CHILDREN}/${id}`), init);
-      statesById[id] = init;
-      return { id, st: init };
+      await set(ref(db, `${PATH_CHILDREN}/${name}`), init);
+      return init;
     }
 
-    async function ensureNoteCurrentWeek(id, st){
+    async function ensureNoteCurrentWeek(name, st){
       if((st.noteWeek || "") === CURRENT_WEEK) return st;
       const patch = { noteText: "", noteWeek: CURRENT_WEEK };
-      await update(ref(db, `${PATH_CHILDREN}/${id}`), patch);
-      statesById[id] = { ...st, ...patch };
-      return statesById[id];
+      await update(ref(db, `${PATH_CHILDREN}/${name}`), patch);
+      return { ...st, ...patch };
     }
 
     function renderKidList(){
@@ -418,22 +390,18 @@
           div.textContent = "Keine Treffer für die Suche.";
           kidList.appendChild(div);
         }
+        pillKids.textContent = `Kinder: ${NAMES.length}`;
         return;
       }
       kidsEmpty.style.display = "none";
 
       for(const name of filtered){
-        const id = idForName(name);
-        const st = statesById[id] || {};
-        const stamps = clampStamps(st.stamps ?? 0);
-        const goal = st.activeGoalId ? getGoalById(st.activeGoalId) : null;
-
         const el = document.createElement("div");
         el.className = "kid";
         el.innerHTML = `
           <div>
             <div class="kidName">${name}</div>
-            <div class="kidMeta">${stamps}/10 • ${(goal?.text || "— kein Ziel —")}</div>
+            <div class="kidMeta">Tippen zum Bearbeiten</div>
           </div>
           <div class="kidMeta">›</div>
         `;
@@ -447,94 +415,109 @@
     search.addEventListener("input", renderKidList);
 
     async function openKid(name){
-      currentName = name;
-      const ensured = await ensureStateExists(name);
-      currentId = ensured.id;
+      try{
+        currentName = name;
+        detailName.textContent = name;
 
-      let st = ensured.st;
-      st = await ensureNoteCurrentWeek(currentId, st);
+        // immer frisch laden
+        let st = await ensureChildStateExists(name);
+        st = await ensureNoteCurrentWeek(name, st);
 
-      const stamps = clampStamps(st.stamps ?? 0);
-      draftStamps = stamps;
+        const stamps = clampStamps(st.stamps ?? 0);
+        draftStamps = stamps;
 
-      const goal = st.activeGoalId ? getGoalById(st.activeGoalId) : null;
+        const goal = st.activeGoalId ? getGoalById(st.activeGoalId) : null;
+        detailMeta.textContent = `${stamps}/10 • ${CURRENT_WEEK} • ${(goal?.text || "— kein Ziel —")}`;
 
-      detailName.textContent = name;
-      detailMeta.textContent = `${stamps}/10 • ${CURRENT_WEEK} • ${(goal?.text || "— kein Ziel —")}`;
+        renderGoalSelect(st.activeGoalId);
+        stampsPill.textContent = `Stempel: ${stamps}/10`;
+        renderCircles(stamps);
 
-      renderGoalSelect(st.activeGoalId);
-      stampsPill.textContent = `Stempel: ${stamps}/10`;
-      renderCircles(stamps);
-      noteEl.value = st.noteText || "";
+        noteEl.value = st.noteText || "";
 
-      showOverlay();
+        showOverlay();
+      }catch(e){
+        alert("Fehler beim Laden: " + (e?.message || String(e)));
+      }
     }
 
     btnMinus.addEventListener("click", ()=>{
-      if(!currentId) return;
+      if(!currentName) return;
       draftStamps = clampStamps(draftStamps - 1);
       stampsPill.textContent = `Stempel: ${draftStamps}/10`;
       renderCircles(draftStamps);
     });
 
     btnPlus.addEventListener("click", ()=>{
-      if(!currentId) return;
+      if(!currentName) return;
       draftStamps = clampStamps(draftStamps + 1);
       stampsPill.textContent = `Stempel: ${draftStamps}/10`;
       renderCircles(draftStamps);
     });
 
     btnSaveStamps.addEventListener("click", async ()=>{
-      if(!currentId) return;
-      await update(ref(db, `${PATH_CHILDREN}/${currentId}`), { stamps: draftStamps });
-
-      const st = statesById[currentId] || {};
-      statesById[currentId] = { ...st, stamps: draftStamps };
-
-      const goal = statesById[currentId].activeGoalId ? getGoalById(statesById[currentId].activeGoalId) : null;
-      detailMeta.textContent = `${draftStamps}/10 • ${CURRENT_WEEK} • ${(goal?.text || "— kein Ziel —")}`;
-      renderKidList();
+      if(!currentName) return;
+      try{
+        await update(ref(db, `${PATH_CHILDREN}/${currentName}`), { stamps: draftStamps });
+        const st = await loadChildStateFresh(currentName);
+        const goal = st?.activeGoalId ? getGoalById(st.activeGoalId) : null;
+        detailMeta.textContent = `${clampStamps(st?.stamps ?? 0)}/10 • ${CURRENT_WEEK} • ${(goal?.text || "— kein Ziel —")}`;
+        alert("Stempel gespeichert.");
+      }catch(e){
+        alert("Speichern fehlgeschlagen: " + (e?.message || String(e)));
+      }
     });
 
     btnSetGoal.addEventListener("click", async ()=>{
-      if(!currentId) return;
-      const goalId = goalSelect.value || firstGoalId();
-      if(!goalId){ alert("Kein Ziel verfügbar."); return; }
+      if(!currentName) return;
+      try{
+        const goalId = goalSelect.value || firstGoalId();
+        if(!goalId){
+          alert("Kein Ziel verfügbar.");
+          return;
+        }
+        const patch = { activeGoalId: goalId, stamps: 0, noteText: "", noteWeek: CURRENT_WEEK };
+        await update(ref(db, `${PATH_CHILDREN}/${currentName}`), patch);
 
-      const patch = { activeGoalId: goalId, stamps: 0, noteText: "", noteWeek: CURRENT_WEEK };
-      await update(ref(db, `${PATH_CHILDREN}/${currentId}`), patch);
-      statesById[currentId] = { ...(statesById[currentId] || {}), ...patch };
+        draftStamps = 0;
+        stampsPill.textContent = "Stempel: 0/10";
+        renderCircles(0);
+        noteEl.value = "";
 
-      draftStamps = 0;
-      stampsPill.textContent = "Stempel: 0/10";
-      renderCircles(0);
-      noteEl.value = "";
-
-      const goal = getGoalById(goalId);
-      detailMeta.textContent = `0/10 • ${CURRENT_WEEK} • ${(goal?.text || "— kein Ziel —")}`;
-      renderKidList();
+        const goal = getGoalById(goalId);
+        detailMeta.textContent = `0/10 • ${CURRENT_WEEK} • ${(goal?.text || "— kein Ziel —")}`;
+        alert("Ziel gesetzt.");
+      }catch(e){
+        alert("Ziel setzen fehlgeschlagen: " + (e?.message || String(e)));
+      }
     });
 
     btnSaveNote.addEventListener("click", async ()=>{
-      if(!currentId) return;
-      const text = (noteEl.value || "").trim();
-      const patch = { noteText: text, noteWeek: CURRENT_WEEK };
-      await update(ref(db, `${PATH_CHILDREN}/${currentId}`), patch);
-      statesById[currentId] = { ...(statesById[currentId] || {}), ...patch };
-      renderKidList();
+      if(!currentName) return;
+      try{
+        const text = (noteEl.value || "").trim();
+        const patch = { noteText: text, noteWeek: CURRENT_WEEK };
+        await update(ref(db, `${PATH_CHILDREN}/${currentName}`), patch);
+        alert("Notiz gespeichert.");
+      }catch(e){
+        alert("Notiz speichern fehlgeschlagen: " + (e?.message || String(e)));
+      }
     });
 
     btnClearNote.addEventListener("click", async ()=>{
       noteEl.value = "";
-      if(!currentId) return;
-      const patch = { noteText: "", noteWeek: CURRENT_WEEK };
-      await update(ref(db, `${PATH_CHILDREN}/${currentId}`), patch);
-      statesById[currentId] = { ...(statesById[currentId] || {}), ...patch };
-      renderKidList();
+      if(!currentName) return;
+      try{
+        const patch = { noteText: "", noteWeek: CURRENT_WEEK };
+        await update(ref(db, `${PATH_CHILDREN}/${currentName}`), patch);
+        alert("Notiz geleert.");
+      }catch(e){
+        alert("Leeren fehlgeschlagen: " + (e?.message || String(e)));
+      }
     });
 
-    // Live: Namen aus /kinder (nur Keys), filter "~"
-    onValue(ref(db, PATH_NAMES), async (snap)=>{
+    // Live: Namen aus /kinder, filter "~"
+    onValue(ref(db, PATH_NAMES), (snap)=>{
       const arr = [];
       if(snap.exists()){
         snap.forEach(ch => {
@@ -548,40 +531,19 @@
 
       debugEl.textContent =
         `names: /${PATH_NAMES} -> ${NAMES.length} (gefiltert: "~")\n` +
-        `children: /${PATH_CHILDREN} -> per ID (n_...)\n` +
+        `children: /${PATH_CHILDREN}/{NAME}\n` +
         `week: ${CURRENT_WEEK}`;
     }, (err)=>{
       debugEl.textContent = "names listener error:\n" + (err?.message || String(err));
     });
 
-    // Live: States (neuer Pfad) — children/{id}
-    onValue(ref(db, PATH_CHILDREN), (snap)=>{
-      const map = {};
-      if(snap.exists()){
-        snap.forEach(ch => map[ch.key] = ch.val() || {});
-      }
-      statesById = map;
-      renderKidList();
-
-      // falls gerade offen: Meta live aktualisieren
-      if(currentId && overlay.classList.contains("show")){
-        const st = statesById[currentId] || {};
-        const stamps = clampStamps(st.stamps ?? 0);
-        draftStamps = stamps;
-        const goal = st.activeGoalId ? getGoalById(st.activeGoalId) : null;
-        detailMeta.textContent = `${stamps}/10 • ${CURRENT_WEEK} • ${(goal?.text || "— kein Ziel —")}`;
-        stampsPill.textContent = `Stempel: ${stamps}/10`;
-        renderGoalSelect(st.activeGoalId);
-        renderCircles(stamps);
-        noteEl.value = st.noteText || "";
-      }
-    }, (err)=>{
-      debugEl.textContent = "children listener error:\n" + (err?.message || String(err));
-    });
-
-    // Init: Katalog automatisch setzen
+    // Init: Katalog nur setzen, wenn noch leer
     (async function init(){
-      try{ await publishCatalog(); } catch(e){ /* ignore */ }
+      try{
+        await publishCatalog(false);
+      }catch(e){
+        catalogInfo.textContent = "Katalog konnte nicht geprüft/gesetzt werden (Rules?).";
+      }
       catalogInfo.textContent = `Kategorien: ${CATALOG.categories.length} • Ziele: ${CATALOG.goals.length}`;
     })();
   </script>
