@@ -1,3 +1,4 @@
+<!-- index.html (Zielkarte v1) — FIX: lädt children per ID (n_base64url(name)) + Migration von legacy name-keys -->
 <!DOCTYPE html>
 <html lang="de">
 <head>
@@ -11,7 +12,9 @@
     :root{
       --bg:#f7f8fc; --card:#ffffff; --txt:#111827; --muted:#6b7280;
       --border:#e5e7eb; --radius:18px; --shadow:0 6px 18px rgba(0,0,0,.08);
-      --green:#22c55e; --red:#ef4444; --blue:#007aff;
+      --green:#22c55e;
+      --red:#ef4444;
+      --blue:#007aff;
     }
     *{box-sizing:border-box}
     body{
@@ -33,10 +36,16 @@
     }
     .kidList{display:flex; flex-direction:column; gap:12px}
     .kidBtn{
-      padding:16px; border-radius:18px; border:1px solid var(--border);
-      background:#fff; cursor:pointer; display:flex; justify-content:space-between; align-items:center;
-      font-size:20px; font-weight:900;
-      -webkit-tap-highlight-color: transparent;
+      padding:16px;
+      border-radius:18px;
+      border:1px solid var(--border);
+      background:#fff;
+      cursor:pointer;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      font-size:20px;
+      font-weight:900;
     }
     .kidBtn:active{transform:scale(.99)}
     .kidArrow{font-size:14px; color:var(--muted); font-weight:900}
@@ -45,7 +54,6 @@
     .back{
       border:1px solid var(--border); background:#fff; border-radius:14px;
       padding:10px 14px; font-weight:900; cursor:pointer;
-      -webkit-tap-highlight-color: transparent;
     }
 
     .mouse{width:46px; height:46px; display:block; margin:8px auto 0}
@@ -54,8 +62,10 @@
     .stampLine{margin-top:10px; font-size:13px; color:var(--muted); font-weight:800; text-align:center}
 
     .circles{
-      display:grid; grid-template-columns:repeat(10,1fr);
-      gap:8px; margin-top:12px;
+      display:grid;
+      grid-template-columns:repeat(10,1fr);
+      gap:8px;
+      margin-top:12px;
     }
     .dot{
       aspect-ratio:1/1;
@@ -63,14 +73,27 @@
       border:2px solid var(--border);
       background:#fff;
     }
-    .dot.on{ background:var(--green); border-color:var(--green); }
+    .dot.on{
+      background:var(--green);
+      border-color:var(--green);
+    }
 
     .empty{
-      text-align:center; font-size:13px; color:var(--muted); font-weight:800; padding:20px 0;
+      text-align:center;
+      font-size:13px;
+      color:var(--muted);
+      font-weight:800;
+      padding:20px 0;
     }
     .warn{
-      background:#fff7ed; border:1px solid #fed7aa; border-radius:14px;
-      padding:10px; color:#9a3412; font-size:12px; font-weight:800; margin-top:10px;
+      background:#fff7ed;
+      border:1px solid #fed7aa;
+      border-radius:14px;
+      padding:10px;
+      color:#9a3412;
+      font-size:12px;
+      font-weight:800;
+      margin-top:10px;
     }
 
     /* PIN Overlay */
@@ -88,34 +111,48 @@
     .panelTitle{font-weight:950; font-size:18px}
     .panelSub{color:var(--muted); font-size:12px; font-weight:800; margin-top:2px}
     .pinInput{
-      width:100%; padding:14px; border-radius:14px; border:1px solid var(--border);
-      font-size:18px; font-weight:900; margin-top:10px;
+      width:100%;
+      padding:14px;
+      border-radius:14px;
+      border:1px solid var(--border);
+      font-size:18px;
+      font-weight:900;
+      margin-top:10px;
     }
     .row{display:flex; gap:10px; align-items:center; margin-top:10px}
     .btn{
-      flex:1; border:1px solid var(--border); background:#fff; border-radius:14px;
-      padding:12px 14px; font-weight:900; cursor:pointer;
-      -webkit-tap-highlight-color: transparent;
+      flex:1;
+      border:1px solid var(--border);
+      background:#fff;
+      border-radius:14px;
+      padding:12px 14px;
+      font-weight:900;
+      cursor:pointer;
     }
     .btn.primary{background:var(--blue); border-color:var(--blue); color:#fff}
     .err{color:var(--red); font-weight:900; font-size:12px; margin-top:8px}
     .lockedBox{
-      background:#ffecec; border:1px solid var(--red); color:#7a0000;
-      border-radius:14px; padding:10px; margin-top:10px;
-      font-weight:900; font-size:12px; white-space:pre-wrap;
+      background:#ffecec;
+      border:1px solid var(--red);
+      color:#7a0000;
+      border-radius:14px;
+      padding:10px;
+      margin-top:10px;
+      font-weight:900;
+      font-size:12px;
+      white-space:pre-wrap;
     }
-
-    #livePill{
-      display:inline-flex; gap:8px; align-items:center;
-      border:1px solid var(--border); border-radius:999px; padding:6px 10px;
-      font-size:12px; font-weight:900; color:var(--muted); background:#fafafa;
+    .debug{
+      margin-top:10px;
+      background:#0b1220;
+      color:#e5e7eb;
+      border-radius:14px;
+      padding:10px;
+      font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;
+      font-size:12px;
+      white-space:pre-wrap;
+      overflow:auto;
     }
-    .dotLive{
-      width:10px; height:10px; border-radius:50%;
-      background:var(--muted);
-    }
-    .dotLive.ok{ background: var(--green); }
-    .dotLive.err{ background: var(--red); }
   </style>
 </head>
 
@@ -125,13 +162,12 @@
 
     <!-- LIST VIEW -->
     <div id="listView" class="card">
-      <div style="display:flex; justify-content:space-between; gap:10px; align-items:center; margin-bottom:10px">
-        <div id="livePill"><span id="liveDot" class="dotLive"></span><span id="liveText">Sync: …</span></div>
-      </div>
       <input id="search" class="search" placeholder="Wähle deinen Namen …" />
       <div id="kidList" class="kidList"></div>
       <div id="noKids" class="empty hidden">Es sind noch keine Kinder vorhanden.</div>
       <div id="hint" class="warn hidden">Hinweis: Es werden nur Namen angezeigt, die in beiden Datenbanken existieren (Zugang + Zielkarte).</div>
+
+      <div id="debug" class="debug">loading…</div>
     </div>
 
     <!-- DETAIL VIEW -->
@@ -213,56 +249,45 @@
     const dbPoints = getDatabase(appPoints);
 
     /* ===== Pfade ===== */
-    const PATH_NAMES_POINTS = "kinder";                 // (dbPoints) nur Keys
-    const PATH_ACCESS_KIDS  = "kinder";                 // (dbAccess) code/gesperrt/sperrGrund
-    const PATH_CATALOG      = "zielkarte/v1/catalog";   // (dbPoints)
-    const PATH_CHILDREN     = "zielkarte/v1/children";  // (dbPoints) => children/{id}
+    const PATH_NAMES_OLD   = "kinder";                 // (dbPoints) nur Keys
+    const PATH_ACCESS_KIDS = "kinder";                 // (dbAccess) code/gesperrt/sperrGrund
+    const PATH_CATALOG     = "zielkarte/v1/catalog";   // (dbPoints)
+    const PATH_CHILDREN    = "zielkarte/v1/children";  // (dbPoints) children/{id}
 
     /* ===== DOM ===== */
-    const listView      = document.getElementById("listView");
-    const detailView    = document.getElementById("detailView");
-    const searchEl      = document.getElementById("search");
-    const kidListEl     = document.getElementById("kidList");
-    const noKidsEl      = document.getElementById("noKids");
-    const hintEl        = document.getElementById("hint");
+    const listView = document.getElementById("listView");
+    const detailView = document.getElementById("detailView");
+    const searchEl = document.getElementById("search");
+    const kidListEl = document.getElementById("kidList");
+    const noKidsEl = document.getElementById("noKids");
+    const hintEl = document.getElementById("hint");
+    const debugEl = document.getElementById("debug");
 
-    const backBtn       = document.getElementById("backBtn");
-    const kidNameEl     = document.getElementById("kidName");
-    const goalTextEl    = document.getElementById("goalText");
-    const stampLineEl   = document.getElementById("stampLine");
-    const circlesEl     = document.getElementById("circles");
+    const backBtn = document.getElementById("backBtn");
+    const kidNameEl = document.getElementById("kidName");
+    const goalTextEl = document.getElementById("goalText");
+    const stampLineEl = document.getElementById("stampLine");
+    const circlesEl = document.getElementById("circles");
     const noCatalogWarn = document.getElementById("noCatalogWarn");
 
-    const pinOverlay    = document.getElementById("pinOverlay");
-    const pinTitle      = document.getElementById("pinTitle");
-    const pinSub        = document.getElementById("pinSub");
-    const pinInput      = document.getElementById("pinInput");
-    const pinOk         = document.getElementById("pinOk");
-    const pinCancel     = document.getElementById("pinCancel");
-    const pinError      = document.getElementById("pinError");
-    const pinLockedBox  = document.getElementById("pinLockedBox");
-
-    const liveDot       = document.getElementById("liveDot");
-    const liveText      = document.getElementById("liveText");
+    const pinOverlay = document.getElementById("pinOverlay");
+    const pinTitle = document.getElementById("pinTitle");
+    const pinSub = document.getElementById("pinSub");
+    const pinInput = document.getElementById("pinInput");
+    const pinOk = document.getElementById("pinOk");
+    const pinCancel = document.getElementById("pinCancel");
+    const pinError = document.getElementById("pinError");
+    const pinLockedBox = document.getElementById("pinLockedBox");
 
     /* ===== State ===== */
-    let namesPoints = [];      // dbPoints/kinder keys (gefiltert)
-    let accessKids  = {};      // dbAccess/kinder map
-    let catalog     = null;    // dbPoints catalog
-    let statesById  = {};      // dbPoints children map (key=id)
+    let namesPoints = [];  // dbPoints/kinder keys (gefiltert)
+    let accessKids  = {};  // dbAccess/kinder map
+    let catalog     = null;
+    let statesById  = {};  // id -> state
 
     let pendingName = null;
-    let currentName = null;
-    let currentId   = null;
 
     /* ===== Utils ===== */
-    function setLive(status, msg){
-      liveText.textContent = msg;
-      liveDot.classList.remove("ok","err");
-      if(status === "ok") liveDot.classList.add("ok");
-      if(status === "err") liveDot.classList.add("err");
-    }
-
     const clampStamps = (x) => Math.max(0, Math.min(10, Math.floor(Number(x) || 0)));
 
     function isValidName(name){
@@ -273,13 +298,21 @@
       return true;
     }
 
+    // EXACT gleiche ID-Logik wie im Admin
+    function toBase64Url(str){
+      const utf8 = new TextEncoder().encode(str);
+      let bin = "";
+      utf8.forEach(b => bin += String.fromCharCode(b));
+      const b64 = btoa(bin);
+      return b64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+    }
+    function idForName(name){
+      return "n_" + toBase64Url(String(name || "").trim());
+    }
+
     function toggle(showList){
       listView.classList.toggle("hidden", !showList);
       detailView.classList.toggle("hidden", showList);
-      if(showList){
-        currentName = null;
-        currentId = null;
-      }
     }
 
     function showPin(){
@@ -317,23 +350,17 @@
       }
     }
 
-    // SAFE KEY: base64url(name) -> identisch zu Admin
-    function toBase64Url(str){
-      const utf8 = new TextEncoder().encode(str);
-      let bin = "";
-      utf8.forEach(b => bin += String.fromCharCode(b));
-      const b64 = btoa(bin);
-      return b64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
-    }
-    function idForName(name){
-      return "n_" + toBase64Url(String(name || "").trim());
+    function renderDebug(){
+      const merged = namesPoints.filter(n => accessKids[n] != null);
+      debugEl.textContent =
+        `sync: ${catalog ? "catalog✓" : "catalog×"}  ${Object.keys(statesById).length ? "children✓" : "children×"}  access:${Object.keys(accessKids).length}\n` +
+        `namesPoints: ${namesPoints.length} | merged(access+points): ${merged.length}\n` +
+        `children path: /${PATH_CHILDREN} (id: n_base64url(name))`;
     }
 
-    /* ===== Liste: nur Namen, keine Stempel/Ziele ===== */
+    /* ===== Liste: nur Namen ===== */
     function renderList(){
       const q = (searchEl.value || "").toLowerCase();
-
-      // nur Namen, die auch in accessKids existieren (PIN/Sperre)
       const merged = namesPoints.filter(n => accessKids[n] != null);
 
       hintEl.classList.toggle("hidden", merged.length === namesPoints.length);
@@ -344,19 +371,18 @@
 
       kidListEl.innerHTML = "";
 
-      if(merged.length === 0){
-        noKidsEl.classList.remove("hidden");
+      if(filtered.length === 0){
+        noKidsEl.classList.toggle("hidden", merged.length !== 0);
+        if(merged.length !== 0){
+          const div = document.createElement("div");
+          div.className = "empty";
+          div.textContent = "Keine Treffer.";
+          kidListEl.appendChild(div);
+        }
+        renderDebug();
         return;
       }
       noKidsEl.classList.add("hidden");
-
-      if(filtered.length === 0){
-        const div = document.createElement("div");
-        div.className = "empty";
-        div.textContent = "Keine Treffer.";
-        kidListEl.appendChild(div);
-        return;
-      }
 
       for(const name of filtered){
         const btn = document.createElement("div");
@@ -365,6 +391,7 @@
         btn.addEventListener("click", ()=>startPinFlow(name));
         kidListEl.appendChild(btn);
       }
+      renderDebug();
     }
     searchEl.addEventListener("input", renderList);
 
@@ -377,8 +404,7 @@
 
       const acc = accessKids[name];
       if(acc && acc.gesperrt === true){
-        pinLockedBox.textContent =
-          `Dein Konto wurde vorübergehend gesperrt.\n\nGrund: ${acc.sperrGrund || "Kein Grund angegeben."}`;
+        pinLockedBox.textContent = `Dein Konto wurde vorübergehend gesperrt.\n\nGrund: ${acc.sperrGrund || "Kein Grund angegeben."}`;
         pinLockedBox.classList.remove("hidden");
         pinOk.disabled = true;
         pinInput.disabled = true;
@@ -391,9 +417,8 @@
     async function pinOkHandler(){
       if(!pendingName) return;
 
-      const name = pendingName; // wichtig: lokal merken
+      const name = pendingName; // wichtig: lokal sichern
       const acc = accessKids[name];
-
       if(acc && acc.gesperrt === true) return;
 
       const entered = String(pinInput.value || "").trim();
@@ -419,11 +444,36 @@
     pinOk.addEventListener("click", pinOkHandler);
     pinInput.addEventListener("keydown", (e)=>{ if(e.key === "Enter") pinOkHandler(); });
 
-    /* ===== Child State: jetzt über ID (nicht name) ===== */
-    async function ensureChildStateExistsById(name){
-      if(!catalog?.goals?.length) return null;
-
+    // Migration: falls legacy unter /children/{NAME} existiert -> nach /children/{ID} kopieren
+    async function migrateLegacyIfNeeded(name){
       const id = idForName(name);
+      if(statesById[id]) return;
+
+      const legacySnap = await get(ref(dbPoints, `${PATH_CHILDREN}/${name}`));
+      if(!legacySnap.exists()) return;
+
+      const legacy = legacySnap.val() || {};
+      const migrated = {
+        displayName: legacy.displayName || name,
+        activeGoalId: legacy.activeGoalId || firstGoalId(),
+        stamps: clampStamps(legacy.stamps ?? 0),
+        noteText: legacy.noteText || "",
+        noteWeek: legacy.noteWeek || ""
+      };
+
+      await set(ref(dbPoints, `${PATH_CHILDREN}/${id}`), migrated);
+      // optional: legacy löschen:
+      // await set(ref(dbPoints, `${PATH_CHILDREN}/${name}`), null);
+
+      statesById[id] = migrated;
+    }
+
+    async function ensureChildStateExists(name){
+      const id = idForName(name);
+      if(statesById[id]) return { id, st: statesById[id] };
+      if(!catalog?.goals?.length) return { id, st: null };
+
+      await migrateLegacyIfNeeded(name);
       if(statesById[id]) return { id, st: statesById[id] };
 
       const init = {
@@ -433,13 +483,12 @@
         noteText: "",
         noteWeek: ""
       };
-
       await set(ref(dbPoints, `${PATH_CHILDREN}/${id}`), init);
       statesById[id] = init;
       return { id, st: init };
     }
 
-    function renderDetailFromState(name, id, st){
+    async function openDetail(name){
       kidNameEl.textContent = name;
 
       if(!catalog?.goals?.length){
@@ -447,55 +496,27 @@
         goalTextEl.textContent = "—";
         stampLineEl.textContent = "—";
         renderCircles(0);
+        toggle(false);
         return;
       }
       noCatalogWarn.classList.add("hidden");
 
+      const ensured = await ensureChildStateExists(name);
+      const st = ensured.st;
+
       const stamps = clampStamps(st?.stamps ?? 0);
       const remaining = Math.max(0, 10 - stamps);
 
-      const effectiveGoalId = st?.activeGoalId || firstGoalId();
-      const goal = effectiveGoalId ? getGoalById(effectiveGoalId) : null;
-
+      const goal = st?.activeGoalId ? getGoalById(st.activeGoalId) : null;
       goalTextEl.textContent = goal?.text || "—";
       stampLineEl.textContent = `Du hast ${stamps} Stempel. Es fehlen noch ${remaining}.`;
+
       renderCircles(stamps);
-    }
-
-    async function openDetail(name){
-      currentName = name;
-      currentId = idForName(name);
-
-      if(!catalog?.goals?.length){
-        renderDetailFromState(name, currentId, {});
-        toggle(false);
-        return;
-      }
-
-      let st = statesById[currentId];
-      if(!st){
-        const created = await ensureChildStateExistsById(name);
-        currentId = created?.id || currentId;
-        st = created?.st || {};
-      }
-
-      renderDetailFromState(name, currentId, st);
       toggle(false);
     }
 
-    // Live-Update in Detailview, wenn Admin speichert
-    function maybeLiveRefreshDetail(){
-      if(detailView.classList.contains("hidden")) return;
-      if(!currentName || !currentId) return;
-      const st = statesById[currentId] || null;
-      if(!st) return;
-      renderDetailFromState(currentName, currentId, st);
-    }
-
-    /* ===== Realtime Listener ===== */
-
-    // 1) dbPoints/kinder (Keys) -> Names
-    onValue(ref(dbPoints, PATH_NAMES_POINTS), (snap)=>{
+    /* ===== Listener: dbPoints/kinder (Keys) ===== */
+    onValue(ref(dbPoints, PATH_NAMES_OLD), (snap)=>{
       const arr = [];
       if(snap.exists()){
         snap.forEach(ch=>{
@@ -505,12 +526,9 @@
       }
       namesPoints = arr;
       renderList();
-    }, (err)=>{
-      setLive("err","Sync: Fehler (names)");
-      console.error(err);
     });
 
-    // 2) dbAccess/kinder (Zugang)
+    /* ===== Listener: dbAccess/kinder (Zugang) ===== */
     onValue(ref(dbAccess, PATH_ACCESS_KIDS), (snap)=>{
       const map = {};
       if(snap.exists()){
@@ -522,48 +540,30 @@
       accessKids = map;
       renderList();
 
-      // PIN Overlay live sperren falls nötig
       if(pendingName && accessKids[pendingName]?.gesperrt === true){
-        pinLockedBox.textContent =
-          `Dein Konto wurde vorübergehend gesperrt.\n\nGrund: ${accessKids[pendingName]?.sperrGrund || "Kein Grund angegeben."}`;
+        pinLockedBox.textContent = `Dein Konto wurde vorübergehend gesperrt.\n\nGrund: ${accessKids[pendingName]?.sperrGrund || "Kein Grund angegeben."}`;
         pinLockedBox.classList.remove("hidden");
         pinOk.disabled = true;
         pinInput.disabled = true;
       }
-    }, (err)=>{
-      setLive("err","Sync: Fehler (access)");
-      console.error(err);
     });
 
-    // 3) Katalog (dbPoints)
+    /* ===== Listener: Katalog ===== */
     onValue(ref(dbPoints, PATH_CATALOG), (snap)=>{
       catalog = snap.exists() ? snap.val() : null;
-      // Wenn Detail offen ist, ggf. neu rendern
-      maybeLiveRefreshDetail();
       renderList();
-    }, (err)=>{
-      setLive("err","Sync: Fehler (catalog)");
-      console.error(err);
     });
 
-    // 4) Zielkarte-States (dbPoints) - children/{id}
+    /* ===== Listener: Zielkarte-States children/{id} ===== */
     onValue(ref(dbPoints, PATH_CHILDREN), (snap)=>{
       const map = {};
       if(snap.exists()){
         snap.forEach(ch => map[ch.key] = ch.val() || {});
       }
       statesById = map;
-      setLive("ok","Sync: live ✅");
-      maybeLiveRefreshDetail();
-    }, (err)=>{
-      setLive("err","Sync: Fehler (states)");
-      console.error(err);
+      renderDebug();
+      // Detail live aktualisieren wäre möglich, aber nicht notwendig
     });
-
-    // Init UI
-    setLive(null,"Sync: …");
-    toggle(true);
-    renderList();
   </script>
 </body>
 </html>
