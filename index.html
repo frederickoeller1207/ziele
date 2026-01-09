@@ -1,4 +1,3 @@
-<!-- index.html (Zielkarte v1) — FIX: lädt children per ID (n_base64url(name)) + Migration von legacy name-keys -->
 <!DOCTYPE html>
 <html lang="de">
 <head>
@@ -166,7 +165,6 @@
       <div id="kidList" class="kidList"></div>
       <div id="noKids" class="empty hidden">Es sind noch keine Kinder vorhanden.</div>
       <div id="hint" class="warn hidden">Hinweis: Es werden nur Namen angezeigt, die in beiden Datenbanken existieren (Zugang + Zielkarte).</div>
-
       <div id="debug" class="debug">loading…</div>
     </div>
 
@@ -218,9 +216,9 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.5.2/firebase-app.js";
-    import { getDatabase, ref, get, onValue, set } from "https://www.gstatic.com/firebasejs/10.5.2/firebase-database.js";
+    import { getDatabase, ref, get, onValue, set, onChildChanged, off } from "https://www.gstatic.com/firebasejs/10.5.2/firebase-database.js";
 
-    /* ===== Firebase 1: gesamt-dae4e (Zugang / PIN / Sperre) ===== */
+    // Firebase 1: gesamt-dae4e (Zugang / PIN / Sperre)
     const configAccess = {
       apiKey:"AIzaSyAQaNKUa-RKvUcwlPpWnEyKxcVjYV6cZuU",
       authDomain:"gesamt-dae4e.firebaseapp.com",
@@ -231,7 +229,7 @@
       appId:"1:844023612743:web:0821aa894541f89a7df862"
     };
 
-    /* ===== Firebase 2: punkte-45c20 (Zielkarte / Katalog / Stempel) ===== */
+    // Firebase 2: punkte-45c20 (Zielkarte / Katalog / Stempel)
     const configPoints = {
       apiKey: "AIzaSyAdPN2duh89Fx5rmYlFshdf0juhYNX_7fg",
       authDomain: "punkte-45c20.firebaseapp.com",
@@ -248,13 +246,13 @@
     const appPoints = initializeApp(configPoints, "pointsApp");
     const dbPoints = getDatabase(appPoints);
 
-    /* ===== Pfade ===== */
+    // Pfade
     const PATH_NAMES_OLD   = "kinder";                 // (dbPoints) nur Keys
     const PATH_ACCESS_KIDS = "kinder";                 // (dbAccess) code/gesperrt/sperrGrund
     const PATH_CATALOG     = "zielkarte/v1/catalog";   // (dbPoints)
-    const PATH_CHILDREN    = "zielkarte/v1/children";  // (dbPoints) children/{id}
+    const PATH_CHILDREN    = "zielkarte/v1/children";  // (dbPoints) children/{NAME}
 
-    /* ===== DOM ===== */
+    // DOM
     const listView = document.getElementById("listView");
     const detailView = document.getElementById("detailView");
     const searchEl = document.getElementById("search");
@@ -279,15 +277,16 @@
     const pinError = document.getElementById("pinError");
     const pinLockedBox = document.getElementById("pinLockedBox");
 
-    /* ===== State ===== */
-    let namesPoints = [];  // dbPoints/kinder keys (gefiltert)
-    let accessKids  = {};  // dbAccess/kinder map
+    // State
+    let namesPoints = [];   // dbPoints/kinder keys (gefiltert)
+    let accessKids  = {};   // dbAccess/kinder map
     let catalog     = null;
-    let statesById  = {};  // id -> state
 
     let pendingName = null;
+    let currentDetailName = null;
+    let detailUnsub = null;
 
-    /* ===== Utils ===== */
+    // Utils
     const clampStamps = (x) => Math.max(0, Math.min(10, Math.floor(Number(x) || 0)));
 
     function isValidName(name){
@@ -296,18 +295,6 @@
       if(n.includes("~")) return false;
       if(n.length < 2) return false;
       return true;
-    }
-
-    // EXACT gleiche ID-Logik wie im Admin
-    function toBase64Url(str){
-      const utf8 = new TextEncoder().encode(str);
-      let bin = "";
-      utf8.forEach(b => bin += String.fromCharCode(b));
-      const b64 = btoa(bin);
-      return b64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
-    }
-    function idForName(name){
-      return "n_" + toBase64Url(String(name || "").trim());
     }
 
     function toggle(showList){
@@ -331,7 +318,10 @@
 
     pinOverlay.addEventListener("click", (e)=>{ if(e.target === pinOverlay) hidePin(); });
     pinCancel.addEventListener("click", hidePin);
-    backBtn.addEventListener("click", ()=>toggle(true));
+    backBtn.addEventListener("click", ()=>{
+      stopDetailLive();
+      toggle(true);
+    });
 
     function getGoalById(id){
       if(!catalog?.goals?.length) return null;
@@ -353,16 +343,14 @@
     function renderDebug(){
       const merged = namesPoints.filter(n => accessKids[n] != null);
       debugEl.textContent =
-        `sync: ${catalog ? "catalog✓" : "catalog×"}  ${Object.keys(statesById).length ? "children✓" : "children×"}  access:${Object.keys(accessKids).length}\n` +
-        `namesPoints: ${namesPoints.length} | merged(access+points): ${merged.length}\n` +
-        `children path: /${PATH_CHILDREN} (id: n_base64url(name))`;
+        `catalog: ${catalog ? "✓" : "×"} | accessKids: ${Object.keys(accessKids).length} | namesPoints: ${namesPoints.length} | merged: ${merged.length}\n` +
+        `children path: /${PATH_CHILDREN}/{NAME}`;
     }
 
-    /* ===== Liste: nur Namen ===== */
+    // Liste: nur Namen
     function renderList(){
       const q = (searchEl.value || "").toLowerCase();
       const merged = namesPoints.filter(n => accessKids[n] != null);
-
       hintEl.classList.toggle("hidden", merged.length === namesPoints.length);
 
       const filtered = merged
@@ -417,7 +405,7 @@
     async function pinOkHandler(){
       if(!pendingName) return;
 
-      const name = pendingName; // wichtig: lokal sichern
+      const name = pendingName; // lokal sichern
       const acc = accessKids[name];
       if(acc && acc.gesperrt === true) return;
 
@@ -444,48 +432,60 @@
     pinOk.addEventListener("click", pinOkHandler);
     pinInput.addEventListener("keydown", (e)=>{ if(e.key === "Enter") pinOkHandler(); });
 
-    // Migration: falls legacy unter /children/{NAME} existiert -> nach /children/{ID} kopieren
-    async function migrateLegacyIfNeeded(name){
-      const id = idForName(name);
-      if(statesById[id]) return;
-
-      const legacySnap = await get(ref(dbPoints, `${PATH_CHILDREN}/${name}`));
-      if(!legacySnap.exists()) return;
-
-      const legacy = legacySnap.val() || {};
-      const migrated = {
-        displayName: legacy.displayName || name,
-        activeGoalId: legacy.activeGoalId || firstGoalId(),
-        stamps: clampStamps(legacy.stamps ?? 0),
-        noteText: legacy.noteText || "",
-        noteWeek: legacy.noteWeek || ""
-      };
-
-      await set(ref(dbPoints, `${PATH_CHILDREN}/${id}`), migrated);
-      // optional: legacy löschen:
-      // await set(ref(dbPoints, `${PATH_CHILDREN}/${name}`), null);
-
-      statesById[id] = migrated;
+    async function loadChildStateFresh(name){
+      const childRef = ref(dbPoints, `${PATH_CHILDREN}/${name}`);
+      const snap = await get(childRef);
+      if(snap.exists()) return snap.val() || {};
+      return null;
     }
 
+    // Wichtig: Existenz immer per get() prüfen, sonst überschreibt man aus Versehen mit init
     async function ensureChildStateExists(name){
-      const id = idForName(name);
-      if(statesById[id]) return { id, st: statesById[id] };
-      if(!catalog?.goals?.length) return { id, st: null };
+      const existing = await loadChildStateFresh(name);
+      if(existing) return existing;
 
-      await migrateLegacyIfNeeded(name);
-      if(statesById[id]) return { id, st: statesById[id] };
+      if(!catalog?.goals?.length) return null;
 
       const init = {
-        displayName: name,
         activeGoalId: firstGoalId(),
         stamps: 0,
         noteText: "",
         noteWeek: ""
       };
-      await set(ref(dbPoints, `${PATH_CHILDREN}/${id}`), init);
-      statesById[id] = init;
-      return { id, st: init };
+      await set(ref(dbPoints, `${PATH_CHILDREN}/${name}`), init);
+      return init;
+    }
+
+    function stopDetailLive(){
+      if(detailUnsub){
+        detailUnsub();
+        detailUnsub = null;
+      }
+      currentDetailName = null;
+    }
+
+    function startDetailLive(name){
+      stopDetailLive();
+      currentDetailName = name;
+
+      const childRef = ref(dbPoints, `${PATH_CHILDREN}/${name}`);
+      const cb = async (snap)=> {
+        if(!snap.exists()) return;
+        const st = snap.val() || {};
+        const stamps = clampStamps(st.stamps ?? 0);
+        const remaining = Math.max(0, 10 - stamps);
+        const goal = st.activeGoalId ? getGoalById(st.activeGoalId) : null;
+
+        // Nur aktualisieren, wenn wir wirklich im Detail für dieses Kind sind
+        if(currentDetailName === name){
+          goalTextEl.textContent = goal?.text || "—";
+          stampLineEl.textContent = `Du hast ${stamps} Stempel. Es fehlen noch ${remaining}.`;
+          renderCircles(stamps);
+        }
+      };
+
+      onValue(childRef, cb);
+      detailUnsub = () => off(childRef, "value", cb);
     }
 
     async function openDetail(name){
@@ -501,21 +501,24 @@
       }
       noCatalogWarn.classList.add("hidden");
 
-      const ensured = await ensureChildStateExists(name);
-      const st = ensured.st;
+      let st = await ensureChildStateExists(name);
+      if(!st) st = await loadChildStateFresh(name);
 
       const stamps = clampStamps(st?.stamps ?? 0);
       const remaining = Math.max(0, 10 - stamps);
-
       const goal = st?.activeGoalId ? getGoalById(st.activeGoalId) : null;
+
       goalTextEl.textContent = goal?.text || "—";
       stampLineEl.textContent = `Du hast ${stamps} Stempel. Es fehlen noch ${remaining}.`;
-
       renderCircles(stamps);
+
       toggle(false);
+
+      // Live sync im Detail (damit Admin-Änderungen sofort sichtbar sind)
+      startDetailLive(name);
     }
 
-    /* ===== Listener: dbPoints/kinder (Keys) ===== */
+    // Listener: dbPoints/kinder (Keys)
     onValue(ref(dbPoints, PATH_NAMES_OLD), (snap)=>{
       const arr = [];
       if(snap.exists()){
@@ -528,7 +531,7 @@
       renderList();
     });
 
-    /* ===== Listener: dbAccess/kinder (Zugang) ===== */
+    // Listener: dbAccess/kinder (Zugang)
     onValue(ref(dbAccess, PATH_ACCESS_KIDS), (snap)=>{
       const map = {};
       if(snap.exists()){
@@ -548,21 +551,11 @@
       }
     });
 
-    /* ===== Listener: Katalog ===== */
+    // Listener: Katalog
     onValue(ref(dbPoints, PATH_CATALOG), (snap)=>{
       catalog = snap.exists() ? snap.val() : null;
       renderList();
-    });
-
-    /* ===== Listener: Zielkarte-States children/{id} ===== */
-    onValue(ref(dbPoints, PATH_CHILDREN), (snap)=>{
-      const map = {};
-      if(snap.exists()){
-        snap.forEach(ch => map[ch.key] = ch.val() || {});
-      }
-      statesById = map;
       renderDebug();
-      // Detail live aktualisieren wäre möglich, aber nicht notwendig
     });
   </script>
 </body>
