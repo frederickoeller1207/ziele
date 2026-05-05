@@ -3,82 +3,305 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Sapore - Service</title>
+    <title>Sapore - Service Tablet</title>
     <style>
         :root {
-            --bg: #f5f5f7; --card: #ffffff; --primary: #007aff; --secondary: #5856d6;
-            --success: #34c759; --warning: #ff9500; --danger: #ff3b30; --text: #1d1d1f;
+            --bg: #f5f5f7;
+            --card: #ffffff;
+            --primary: #007aff; /* Apple Blue */
+            --primary-bg: #e3f2ff;
+            --success: #34c759; /* Apple Green */
+            --danger: #ff3b30; /* Apple Red */
+            --text: #1d1d1f;
+            --text-secondary: #86868b;
+            --border: #d2d2d7;
         }
-        body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; }
-        h1, h2 { font-weight: 600; margin-bottom: 10px; }
-        .container { display: grid; grid-template-columns: 1fr 350px; gap: 20px; max-width: 1200px; margin: auto; }
-        .card { background: var(--card); border-radius: 18px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 20px; }
-        
-        /* Tisch-Auswahl */
-        .grid-tables { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
-        .btn-table { padding: 15px; border: none; border-radius: 12px; background: #e5e5ea; font-size: 16px; font-weight: bold; cursor: pointer; }
-        .btn-table.active { background: var(--primary); color: white; }
 
-        /* Menü */
-        .menu-cat { font-weight: bold; margin-top: 15px; color: #8e8e93; text-transform: uppercase; font-size: 12px; }
-        .grid-menu { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 10px; }
-        .btn-item { padding: 15px; border: none; border-radius: 12px; background: #f2f2f7; text-align: left; cursor: pointer; transition: 0.2s; }
-        .btn-item:active { transform: scale(0.95); }
-        .btn-item span { display: block; font-size: 12px; color: #666; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 10px; /* Weniger Padding am Rand auf kleinen Geräten */
+            padding-bottom: 30px;
+            font-size: 16px;
+        }
+
+        h1, h2, h3 { font-weight: 600; margin-top: 0; }
+        
+        /* Status Bar oben */
+        .status-bar {
+            font-size: 14px;
+            margin-bottom: 15px;
+            padding: 12px 15px;
+            background: var(--card);
+            border-radius: 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        }
+        .conn-dot { height: 10px; width: 10px; border-radius: 50%; display: inline-block; margin-right: 5px; background: #ccc; }
+        .connected .conn-dot { background: var(--success); animation: pulse 2s infinite; }
+
+        /* Main Container: Flexbox für Responsive Layout */
+        .main-container {
+            display: flex;
+            flex-direction: column; /* Standard: Alles untereinander (Mobile) */
+            gap: 15px;
+        }
+
+        /* Ab Tablet-Größe (z.B. iPad Porträt 768px) nebeneinander */
+        @media (min-width: 768px) {
+            .main-container {
+                flex-direction: row;
+                align-items: flex-start;
+            }
+            .col-left { flex: 1; }
+            .col-right { width: 320px; position: sticky; top: 10px; }
+        }
+
+        .card {
+            background: var(--card);
+            border-radius: 16px;
+            padding: 15px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            margin-bottom: 15px;
+        }
+
+        .section-title { font-size: 18px; color: var(--text-secondary); margin-bottom: 12px; display: flex; align-items: center; gap: 8px;}
+
+        /* 1. Tisch-Auswahl: Grössere Abstände, besser tippbar */
+        .grid-tables {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); /* Passt sich Bildschirmbreite an */
+            gap: 10px;
+        }
+        .btn-table {
+            aspect-ratio: 1 / 1; /* Quadratisch */
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            background: var(--card);
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .btn-table.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+            transform: scale(1.05);
+            box-shadow: 0 4px 10px rgba(0,122,255,0.3);
+        }
+
+        /* 2. Menü: Verbesserte Kartenansicht */
+        .menu-cat-block { margin-bottom: 20px; }
+        .menu-cat-title {
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--primary);
+            margin-bottom: 10px;
+            border-bottom: 1px solid var(--primary-bg);
+            padding-bottom: 5px;
+        }
+        .grid-menu {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 10px;
+        }
+        .btn-item {
+            border: none;
+            border-radius: 12px;
+            background: #f2f2f7;
+            padding: 12px;
+            text-align: left;
+            cursor: pointer;
+            transition: background 0.1s, transform 0.1s;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            height: 100%; min-height: 80px;
+        }
+        .btn-item:active { background: #e5e5ea; transform: scale(0.97); }
+        .item-name { font-weight: 600; font-size: 15px; line-height: 1.3; margin-bottom: 5px; color: var(--text); }
+        .item-price { font-size: 16px; font-weight: 700; color: var(--primary); margin-top: auto;}
 
         /* Warenkorb & Ready List */
-        .cart-item, .ready-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #eee; }
-        .btn-send { width: 100%; padding: 15px; background: var(--success); color: white; border: none; border-radius: 12px; font-weight: bold; margin-top: 15px; font-size: 16px; }
-        .btn-clear { width: 100%; background: none; border: none; color: var(--danger); margin-top: 10px; cursor: pointer; }
-        .btn-remove { background: none; border: none; color: var(--danger); font-size: 14px; }
-        .btn-serve { background: var(--primary); color: white; border: none; border-radius: 8px; padding: 8px 12px; }
+        .cart-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;}
+        .table-indicator { background: var(--primary-bg); color: var(--primary); padding: 4px 8px; border-radius: 8px; font-weight: bold; font-size: 14px;}
         
-        .status-bar { font-size: 14px; margin-bottom: 20px; padding: 10px; background: #fff; border-radius: 10px; display: flex; justify-content: space-between; }
-        @media (max-width: 900px) { .container { grid-template-columns: 1fr; } }
+        .cart-items-container { max-height: 300px; overflow-y: auto; padding-right: 5px;} /* Scrollbar im Warenkorb */
+        
+        .cart-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .cart-item-info { display: flex; flex-direction: column; flex: 1;}
+        .cart-item-name { font-weight: 500; }
+        .cart-item-price { color: var(--text-secondary); font-size: 14px; }
+
+        .btn-remove {
+            background: none; border: none; color: var(--danger);
+            font-size: 18px; cursor: pointer; padding: 10px; margin-right: -10px;
+        }
+
+        .cart-summary { margin-top: 15px; padding-top: 10px; border-top: 2px solid #eee; }
+        .total-row { display: flex; justify-content: space-between; font-size: 18px; font-weight: 700; margin-bottom: 15px; }
+
+        .action-btns-row { display: flex; gap: 10px; }
+        .btn-send {
+            flex: 2; padding: 16px; background: var(--success); color: white;
+            border: none; border-radius: 12px; font-weight: bold; font-size: 16px;
+            cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;
+        }
+        .btn-send:disabled { background: #a7e1b5; cursor: not-allowed; }
+        
+        .btn-clear-icon {
+            flex: 1; padding: 16px; background: #f2f2f7; color: var(--danger);
+            border: none; border-radius: 12px; cursor: pointer; font-size: 16px;
+        }
+
+        /* Lieferbereit Liste */
+        .ready-item {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 12px; background: #f6fff8; border: 1px solid #c3e6cb;
+            border-radius: 10px; margin-bottom: 8px;
+        }
+        .ready-info strong { font-size: 16px; }
+        .ready-meta { font-size: 12px; color: #155724; display: block; margin-top: 2px;}
+        .btn-serve {
+            background: var(--primary); color: white; border: none;
+            border-radius: 8px; padding: 10px 14px; font-weight: 600; font-size: 14px;
+        }
+
+        /* --- NEU: Sende-Animation Overlay --- */
+        #animation-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255,255,255,0.95);
+            z-index: 1000;
+            display: none; /* Standardmäßig versteckt */
+            flex-direction: column; align-items: center; justify-content: center;
+            backdrop-filter: blur(5px);
+        }
+        .sent-card {
+            background: white; padding: 30px 40px; border-radius: 24px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            text-align: center;
+            transform: scale(0.9); animation: popIn 0.3s forwards ease-out;
+        }
+        .checkmark-circle {
+            width: 80px; height: 80px; border-radius: 50%;
+            background: var(--success); color: white;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 50px; margin: 0 auto 20px auto;
+            box-shadow: 0 4px 10px rgba(52,199,89,0.3);
+        }
+        .sent-text { font-size: 20px; font-weight: 600; color: var(--text); }
+        .sent-subtext { color: var(--text-secondary); margin-top: 5px; }
+
+        /* Animationen */
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(52,199,89, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(52,199,89, 0); } 100% { box-shadow: 0 0 0 0 rgba(52,199,89, 0); } }
+        @keyframes popIn { to { transform: scale(1); opacity: 1; } }
+        
+        /* Utility */
+        .hidden { display: none !important; }
+
     </style>
 </head>
-<body>
+<body class="loading">
 
-    <div class="status-bar">
-        <span>📍 Restaurant <strong>Sapore</strong> (Service)</span>
-        <span id="conn-status">Firebase: Verbinde...</span>
+    <!-- Sende-Animation Overlay (Standard versteckt) -->
+    <div id="animation-overlay">
+        <div class="sent-card">
+            <div class="checkmark-circle">✓</div>
+            <div class="sent-text">Bestellung gesendet</div>
+            <div class="sent-subtext" id="sent-details">Küche bereitet alles vor.</div>
+        </div>
     </div>
 
-    <div class="container">
-        <!-- Linke Spalte -->
-        <main>
+    <div class="status-bar" id="status-bar">
+        <div style="display:flex; align-items:center;">
+            <span class="conn-dot"></span>
+            <strong style="font-size:16px;">Sapore Service</strong>
+        </div>
+        <div id="active-table-indicator" class="hidden">
+            <span class="table-indicator" id="table-label"></span>
+        </div>
+    </div>
+
+    <div class="main-container">
+        
+        <!-- Linke Spalte (Tische & Menü) -->
+        <div class="col-left">
             <div class="card">
-                <h2>1. Tisch auswählen</h2>
-                <div class="grid-tables" id="table-list"></div>
+                <div class="section-title">📍 <span>1. Tisch wählen</span></div>
+                <div class="grid-tables" id="table-list">
+                    <!-- Tische 1-10 werden via JS generiert -->
+                </div>
             </div>
 
             <div class="card">
-                <h2>2. Essen und Getränke</h2>
-                <div id="menu-container"></div>
+                <div class="section-title">🍽️ <span>2. Gerichte & Getränke</span></div>
+                <div id="menu-container">
+                    <!-- Menü wird via JS generiert -->
+                </div>
             </div>
-        </main>
+        </div>
 
-        <!-- Rechte Spalte -->
-        <aside>
-            <div class="card">
-                <h2 id="cart-title">Warenkorb</h2>
-                <div id="cart-items"></div>
-                <div id="cart-sum" style="margin-top: 15px; font-weight: bold; font-size: 18px;">Summe: 0 €</div>
-                <button class="btn-send" onclick="sendOrder()">Bestellung senden</button>
-                <button class="btn-clear" onclick="clearCart()">Warenkorb leeren</button>
+        <!-- Rechte Spalte (Warenkorb & Bereit) sticky -->
+        <div class="col-right">
+            <div class="card" id="cart-card">
+                <div class="cart-header">
+                    <div class="section-title" style="margin:0;">🛒 <span>Warenkorb</span></div>
+                    <span id="cart-table-pille" class="hidden"></span>
+                </div>
+                
+                <div id="cart-empty-state" style="text-align:center; padding: 20px; color: var(--text-secondary);">
+                    Bitte zuerst Tisch wählen und Gerichte antippen.
+                </div>
+
+                <div id="cart-content" class="hidden">
+                    <div class="cart-items-container" id="cart-items">
+                        <!-- Items landen hier -->
+                    </div>
+                    <div class="cart-summary">
+                        <div class="total-row">
+                            <span>Gesamt</span>
+                            <span id="cart-sum">0 €</span>
+                        </div>
+                        <div class="action-btns-row">
+                            <button class="btn-clear-icon" onclick="clearCart()" title="Warenkorb leeren">🗑️</button>
+                            <button class="btn-send" id="btn-send-order" onclick="sendOrder()" disabled>
+                                <span>✉️ Bestellung senden</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </div>
 
-            <div class="card" style="border-left: 5px solid var(--success);">
-                <h2>Lieferbereit</h2>
-                <div id="ready-list"></div>
+            <div class="card" style="border-left: 4px solid var(--success);">
+                <div class="section-title" style="color: var(--success);">✅ <span>Lieferbereit</span></div>
+                <div id="ready-list">
+                    <div style="text-align:center; color: var(--text-secondary); font-size:14px; padding:10px;">Noch nichts fertig.</div>
+                </div>
             </div>
-        </aside>
+        </div>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getDatabase, ref, push, set, onValue, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
+        // --- KONFIGURATION HIER ---
         const firebaseConfig = {
             apiKey: "AIzaSyAdPN2duh89Fx5rmYlFshdf0juhYNX_7fg",
             authDomain: "punkte-45c20.firebaseapp.com",
@@ -88,12 +311,14 @@
             messagingSenderId: "931713539549",
             appId: "1:931713539549:web:e348bf38369639f1906a34"
         };
+        const ORDERS_PATH = "restaurant/sapore/orders";
+        // --- ENDE KONFIGURATION ---
 
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
-        const ORDERS_PATH = "restaurant/sapore/orders";
 
-        const menu = {
+        // Hardcodiertes Menü (exakt wie Lastenheft)
+        const menuData = {
             "Vorspeisen": [
                 { id: "tomatensuppe", name: "Tomatensuppe", price: 3, time: 5 },
                 { id: "bruschetta", name: "Bruschetta", price: 3, time: 5 }
@@ -111,131 +336,254 @@
                 { id: "fanta", name: "Fanta", price: 2, time: 2 },
                 { id: "sprite", name: "Sprite", price: 2, time: 2 },
                 { id: "apfelschorle", name: "Apfelschorle", price: 2, time: 2 },
-                { id: "acqua_min", name: "Acqua Minerale", price: 1, time: 2 },
-                { id: "acqua_nat", name: "Acqua Naturale", price: 1, time: 2 }
+                { id: "acqua_min", name: "Acqua Minerale (sprudel)", price: 1, time: 2 },
+                { id: "acqua_nat", name: "Acqua Naturale (still)", price: 1, time: 2 }
             ]
         };
 
+        // State
         let selectedTable = null;
         let cart = [];
 
+        // DOM Elemente Cache
+        const dom = {
+            tableList: document.getElementById('table-list'),
+            menuContainer: document.getElementById('menu-container'),
+            cartContent: document.getElementById('cart-content'),
+            cartEmpty: document.getElementById('cart-empty-state'),
+            cartItems: document.getElementById('cart-items'),
+            cartSum: document.getElementById('cart-sum'),
+            cartTablePille: document.getElementById('cart-table-pille'),
+            btnSend: document.getElementById('btn-send-order'),
+            readyList: document.getElementById('ready-list'),
+            statusBar: document.getElementById('status-bar'),
+            animOverlay: document.getElementById('animation-overlay'),
+            animDetails: document.getElementById('sent-details')
+        };
+
         // UI Initialisierung
         function init() {
-            const tableList = document.getElementById('table-list');
+            // 1. Tische generieren
             for(let i=1; i<=10; i++) {
                 const btn = document.createElement('button');
                 btn.className = 'btn-table';
-                btn.innerText = `Tisch ${i}`;
-                btn.onclick = () => { selectedTable = i; updateUI(); };
+                btn.innerText = i;
                 btn.id = `table-btn-${i}`;
-                tableList.appendChild(btn);
+                btn.onclick = () => selectTable(i);
+                dom.tableList.appendChild(btn);
             }
 
-            const menuCont = document.getElementById('menu-container');
-            for(const [cat, items] of Object.entries(menu)) {
+            // 2. Menü generieren
+            for(const [cat, items] of Object.entries(menuData)) {
+                const catBlock = document.createElement('div');
+                catBlock.className = 'menu-cat-block';
+                
                 const title = document.createElement('div');
-                title.className = 'menu-cat';
+                title.className = 'menu-cat-title';
                 title.innerText = cat;
-                menuCont.appendChild(title);
+                catBlock.appendChild(title);
+
                 const grid = document.createElement('div');
                 grid.className = 'grid-menu';
+
                 items.forEach(item => {
                     const btn = document.createElement('button');
                     btn.className = 'btn-item';
-                    btn.innerHTML = `<strong>${item.name}</strong><span>${item.price} €</span>`;
+                    btn.innerHTML = `
+                        <span class="item-name">${item.name}</span>
+                        <span class="item-price">${item.price} €</span>
+                    `;
                     btn.onclick = () => addToCart(item);
                     grid.appendChild(btn);
                 });
-                menuCont.appendChild(grid);
+                
+                catBlock.appendChild(grid);
+                dom.menuContainer.appendChild(catBlock);
             }
-            updateUI();
+            renderCart();
+        }
+
+        // Interaktionen
+        function selectTable(num) {
+            selectedTable = num;
+            // Visuelles Feedback Tische
+            document.querySelectorAll('.btn-table').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`table-btn-${num}`).classList.add('active');
+            renderCart();
         }
 
         window.addToCart = (item) => {
-            if(!selectedTable) return alert("Bitte zuerst einen Tisch auswählen.");
-            cart.push({...item});
-            updateUI();
+            if(!selectedTable) {
+                alert("⚠️ Bitte zuerst einen Tisch auswählen."); // Alert hier okay, da Systemzustand blockiert
+                return;
+            }
+            cart.push({...item, cartId: Date.now()}); // Eindeutige ID zum Löschen
+            renderCart();
         };
 
-        window.removeFromCart = (index) => {
-            cart.splice(index, 1);
-            updateUI();
+        window.removeFromCart = (cartId) => {
+            cart = cart.filter(item => item.cartId !== cartId);
+            renderCart();
         };
 
-        window.clearCart = () => { cart = []; updateUI(); };
+        window.clearCart = () => {
+            cart = [];
+            renderCart();
+        };
 
+        // Warenkorb im DOM aktualisieren
+        function renderCart() {
+            // Header Update
+            if(selectedTable) {
+                dom.cartTablePille.innerText = `Tisch ${selectedTable}`;
+                dom.cartTablePille.className = 'table-indicator';
+            } else {
+                dom.cartTablePille.className = 'hidden';
+            }
+
+            // Sichtbarkeit umschalten
+            if(selectedTable && cart.length > 0) {
+                dom.cartEmpty.classList.add('hidden');
+                dom.cartContent.classList.remove('hidden');
+                dom.btnSend.disabled = false;
+            } else {
+                dom.cartEmpty.classList.remove('hidden');
+                dom.cartContent.classList.add('hidden');
+                dom.btnSend.disabled = true;
+                if(!selectedTable) dom.cartEmpty.innerText = "Bitte zuerst Tisch wählen.";
+                else if(cart.length === 0) dom.cartEmpty.innerText = "Tisch ist leer. Gerichte antippen.";
+            }
+
+            // Items rendern
+            dom.cartItems.innerHTML = "";
+            let total = 0;
+            cart.forEach(item => {
+                total += item.price;
+                const div = document.createElement('div');
+                div.className = 'cart-item';
+                div.innerHTML = `
+                    <div class="cart-item-info">
+                        <span class="cart-item-name">${item.name}</span>
+                        <span class="cart-item-price">${item.price} €</span>
+                    </div>
+                    <button class="btn-remove" onclick="removeFromCart(${item.cartId})">🗑️</button>
+                `;
+                dom.cartItems.appendChild(div);
+            });
+            dom.cartSum.innerText = `${total} €`;
+        }
+
+        // --- Firebase Aktion: Bestellung Senden ---
         window.sendOrder = async () => {
             if(!selectedTable || cart.length === 0) return;
-            const promises = cart.map(item => {
-                const orderRef = push(ref(db, ORDERS_PATH));
-                return set(orderRef, {
-                    table: selectedTable,
-                    itemId: item.id,
-                    itemName: item.name,
-                    category: "N/A", // Vereinfacht
-                    price: item.price,
-                    targetMinutes: item.time,
-                    status: "open",
-                    createdAt: Date.now(),
-                    readyAt: null,
-                    servedAt: null
+            
+            dom.btnSend.disabled = true; // Doppel-Klick verhindern
+            dom.btnSend.innerText = "⏳ Sende...";
+
+            const count = cart.length;
+            const table = selectedTable;
+
+            try {
+                // Jedes Item einzeln pushen laut Lastenheft
+                const promises = cart.map(item => {
+                    const newOrderRef = push(ref(db, ORDERS_PATH));
+                    return set(newOrderRef, {
+                        table: table,
+                        itemId: item.id,
+                        itemName: item.name,
+                        // category ist im menuData nicht sauber getrennt für DB, fixen wir hier simpel
+                        category: "Speise/Trank", 
+                        price: item.price,
+                        targetMinutes: item.time,
+                        status: "open",
+                        createdAt: Date.now(),
+                        readyAt: null,
+                        servedAt: null
+                    });
                 });
-            });
-            await Promise.all(promises);
-            alert(`${cart.length} Produkte an die Küche gesendet.`);
-            cart = [];
-            updateUI();
+
+                await Promise.all(promises);
+                
+                // --- NEU: Animation anzeigen statt Alert ---
+                showSentAnimation(count, table);
+                
+                // State aufräumen
+                cart = [];
+                // selectedTable = null; // Optional: Tisch abwählen nach senden? Eher nein.
+                // document.querySelectorAll('.btn-table').forEach(btn => btn.classList.remove('active'));
+                
+                renderCart();
+
+            } catch (error) {
+                console.error(error);
+                alert("Fehler beim Senden. Internetverbindung prüfen.");
+            } finally {
+                dom.btnSend.disabled = false;
+                dom.btnSend.innerHTML = "✉️ Bestellung senden";
+            }
         };
 
+        // Hilfsfunktion für die Animation
+        function showSentAnimation(count, table) {
+            dom.animDetails.innerText = `${count} Position(en) für Tisch ${table} gesendet.`;
+            dom.animOverlay.style.display = 'flex'; // Anzeigen
+
+            // Nach 1.5 Sekunden automatisch ausblenden
+            setTimeout(() => {
+                dom.animOverlay.style.display = 'none';
+            }, 1600);
+        }
+
+
+        // --- Firebase Aktion: Serviert markieren ---
         window.markAsServed = (orderId) => {
-            update(ref(db, `${ORDERS_PATH}/${orderId}`), {
+            const orderRef = ref(db, `${ORDERS_PATH}/${orderId}`);
+            update(orderRef, {
                 status: "served",
                 servedAt: Date.now()
             });
         };
 
-        function updateUI() {
-            // Tische markieren
-            document.querySelectorAll('.btn-table').forEach(btn => btn.classList.remove('active'));
-            if(selectedTable) document.getElementById(`table-btn-${selectedTable}`).classList.add('active');
-            
-            document.getElementById('cart-title').innerText = selectedTable ? `Tisch ${selectedTable}` : "Warenkorb";
-            
-            // Warenkorb rendern
-            const cartCont = document.getElementById('cart-items');
-            cartCont.innerHTML = "";
-            let sum = 0;
-            cart.forEach((item, idx) => {
-                sum += item.price;
-                const div = document.createElement('div');
-                div.className = 'cart-item';
-                div.innerHTML = `<span>${item.name}</span> <button class="btn-remove" onclick="removeFromCart(${idx})">Löschen</button>`;
-                cartCont.appendChild(div);
-            });
-            document.getElementById('cart-sum').innerText = `Summe: ${sum} €`;
-        }
-
-        // Live-Daten für "Lieferbereit"
+        // --- Live-Daten: Lieferbereit (status === 'ready') ---
         onValue(ref(db, ORDERS_PATH), (snapshot) => {
-            document.getElementById('conn-status').innerText = "Firebase: Verbunden";
+            dom.statusBar.classList.add('connected');
             const data = snapshot.val();
-            const readyCont = document.getElementById('ready-list');
-            readyCont.innerHTML = "";
+            dom.readyList.innerHTML = "";
+            let readyOrders = [];
+
             if(data) {
-                Object.entries(data).forEach(([id, order]) => {
-                    if(order.status === "ready") {
-                        const div = document.createElement('div');
-                        div.className = 'ready-item';
-                        const minutesAgo = Math.floor((Date.now() - order.readyAt) / 60000);
-                        div.innerHTML = `<div><strong>Tisch ${order.table}</strong>: ${order.itemName}<br><small>Fertig seit ${minutesAgo} Min.</small></div>
-                                         <button class="btn-serve" onclick="markAsServed('${id}')">Serviert</button>`;
-                        readyCont.appendChild(div);
-                    }
-                });
+                // Filtern und Sortieren (neueste oben)
+                readyOrders = Object.entries(data)
+                    .filter(([id, order]) => order.status === 'ready')
+                    .sort((a,b) => b[1].readyAt - a[1].readyAt);
             }
+
+            if(readyOrders.length === 0) {
+                dom.readyList.innerHTML = `<div style="text-align:center; color: var(--text-secondary); font-size:14px; padding:10px;">Noch nichts fertig.</div>`;
+                return;
+            }
+
+            readyOrders.forEach(([id, order]) => {
+                const readySinceMs = Date.now() - order.readyAt;
+                const readySinceMin = Math.floor(readySinceMs / 60000);
+                let timeStr = readySinceMin === 0 ? "gerade eben" : `vor ${readySinceMin} Min.`;
+
+                const div = document.createElement('div');
+                div.className = 'ready-item';
+                div.innerHTML = `
+                    <div class="ready-info">
+                        <strong>Tisch ${order.table}</strong>: ${order.itemName}
+                        <span class="ready-meta">Bereit ${timeStr}</span>
+                    </div>
+                    <button class="btn-serve" onclick="markAsServed('${id}')">Abgeholt</button>
+                `;
+                dom.readyList.appendChild(div);
+            });
         });
 
+        // Start
         init();
+
     </script>
 </body>
 </html>
