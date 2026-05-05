@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Sapore - Service</title>
+    <style>
+        :root {
+            --bg: #f5f5f7; --card: #ffffff; --primary: #007aff; --secondary: #5856d6;
+            --success: #34c759; --warning: #ff9500; --danger: #ff3b30; --text: #1d1d1f;
+        }
+        body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; }
+        h1, h2 { font-weight: 600; margin-bottom: 10px; }
+        .container { display: grid; grid-template-columns: 1fr 350px; gap: 20px; max-width: 1200px; margin: auto; }
+        .card { background: var(--card); border-radius: 18px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        
+        /* Tisch-Auswahl */
+        .grid-tables { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+        .btn-table { padding: 15px; border: none; border-radius: 12px; background: #e5e5ea; font-size: 16px; font-weight: bold; cursor: pointer; }
+        .btn-table.active { background: var(--primary); color: white; }
+
+        /* Menü */
+        .menu-cat { font-weight: bold; margin-top: 15px; color: #8e8e93; text-transform: uppercase; font-size: 12px; }
+        .grid-menu { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 10px; }
+        .btn-item { padding: 15px; border: none; border-radius: 12px; background: #f2f2f7; text-align: left; cursor: pointer; transition: 0.2s; }
+        .btn-item:active { transform: scale(0.95); }
+        .btn-item span { display: block; font-size: 12px; color: #666; }
+
+        /* Warenkorb & Ready List */
+        .cart-item, .ready-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #eee; }
+        .btn-send { width: 100%; padding: 15px; background: var(--success); color: white; border: none; border-radius: 12px; font-weight: bold; margin-top: 15px; font-size: 16px; }
+        .btn-clear { width: 100%; background: none; border: none; color: var(--danger); margin-top: 10px; cursor: pointer; }
+        .btn-remove { background: none; border: none; color: var(--danger); font-size: 14px; }
+        .btn-serve { background: var(--primary); color: white; border: none; border-radius: 8px; padding: 8px 12px; }
+        
+        .status-bar { font-size: 14px; margin-bottom: 20px; padding: 10px; background: #fff; border-radius: 10px; display: flex; justify-content: space-between; }
+        @media (max-width: 900px) { .container { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+
+    <div class="status-bar">
+        <span>📍 Restaurant <strong>Sapore</strong> (Service)</span>
+        <span id="conn-status">Firebase: Verbinde...</span>
+    </div>
+
+    <div class="container">
+        <!-- Linke Spalte -->
+        <main>
+            <div class="card">
+                <h2>1. Tisch auswählen</h2>
+                <div class="grid-tables" id="table-list"></div>
+            </div>
+
+            <div class="card">
+                <h2>2. Essen und Getränke</h2>
+                <div id="menu-container"></div>
+            </div>
+        </main>
+
+        <!-- Rechte Spalte -->
+        <aside>
+            <div class="card">
+                <h2 id="cart-title">Warenkorb</h2>
+                <div id="cart-items"></div>
+                <div id="cart-sum" style="margin-top: 15px; font-weight: bold; font-size: 18px;">Summe: 0 €</div>
+                <button class="btn-send" onclick="sendOrder()">Bestellung senden</button>
+                <button class="btn-clear" onclick="clearCart()">Warenkorb leeren</button>
+            </div>
+
+            <div class="card" style="border-left: 5px solid var(--success);">
+                <h2>Lieferbereit</h2>
+                <div id="ready-list"></div>
+            </div>
+        </aside>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getDatabase, ref, push, set, onValue, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAdPN2duh89Fx5rmYlFshdf0juhYNX_7fg",
+            authDomain: "punkte-45c20.firebaseapp.com",
+            databaseURL: "https://punkte-45c20-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "punkte-45c20",
+            storageBucket: "punkte-45c20.appspot.com",
+            messagingSenderId: "931713539549",
+            appId: "1:931713539549:web:e348bf38369639f1906a34"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        const ORDERS_PATH = "restaurant/sapore/orders";
+
+        const menu = {
+            "Vorspeisen": [
+                { id: "tomatensuppe", name: "Tomatensuppe", price: 3, time: 5 },
+                { id: "bruschetta", name: "Bruschetta", price: 3, time: 5 }
+            ],
+            "Hauptspeisen": [
+                { id: "penne", name: "Penne a pomodori", price: 6, time: 8 },
+                { id: "pizza_marg", name: "Pizza Margherita", price: 6, time: 8 },
+                { id: "pizza_salami", name: "Pizza vegane Salami", price: 7, time: 8 }
+            ],
+            "Desserts": [
+                { id: "mousse", name: "Mousse au Chocolat", price: 4, time: 4 },
+                { id: "tiramisu", name: "Kinder-Tiramisu", price: 4, time: 4 }
+            ],
+            "Getränke": [
+                { id: "fanta", name: "Fanta", price: 2, time: 2 },
+                { id: "sprite", name: "Sprite", price: 2, time: 2 },
+                { id: "apfelschorle", name: "Apfelschorle", price: 2, time: 2 },
+                { id: "acqua_min", name: "Acqua Minerale", price: 1, time: 2 },
+                { id: "acqua_nat", name: "Acqua Naturale", price: 1, time: 2 }
+            ]
+        };
+
+        let selectedTable = null;
+        let cart = [];
+
+        // UI Initialisierung
+        function init() {
+            const tableList = document.getElementById('table-list');
+            for(let i=1; i<=10; i++) {
+                const btn = document.createElement('button');
+                btn.className = 'btn-table';
+                btn.innerText = `Tisch ${i}`;
+                btn.onclick = () => { selectedTable = i; updateUI(); };
+                btn.id = `table-btn-${i}`;
+                tableList.appendChild(btn);
+            }
+
+            const menuCont = document.getElementById('menu-container');
+            for(const [cat, items] of Object.entries(menu)) {
+                const title = document.createElement('div');
+                title.className = 'menu-cat';
+                title.innerText = cat;
+                menuCont.appendChild(title);
+                const grid = document.createElement('div');
+                grid.className = 'grid-menu';
+                items.forEach(item => {
+                    const btn = document.createElement('button');
+                    btn.className = 'btn-item';
+                    btn.innerHTML = `<strong>${item.name}</strong><span>${item.price} €</span>`;
+                    btn.onclick = () => addToCart(item);
+                    grid.appendChild(btn);
+                });
+                menuCont.appendChild(grid);
+            }
+            updateUI();
+        }
+
+        window.addToCart = (item) => {
+            if(!selectedTable) return alert("Bitte zuerst einen Tisch auswählen.");
+            cart.push({...item});
+            updateUI();
+        };
+
+        window.removeFromCart = (index) => {
+            cart.splice(index, 1);
+            updateUI();
+        };
+
+        window.clearCart = () => { cart = []; updateUI(); };
+
+        window.sendOrder = async () => {
+            if(!selectedTable || cart.length === 0) return;
+            const promises = cart.map(item => {
+                const orderRef = push(ref(db, ORDERS_PATH));
+                return set(orderRef, {
+                    table: selectedTable,
+                    itemId: item.id,
+                    itemName: item.name,
+                    category: "N/A", // Vereinfacht
+                    price: item.price,
+                    targetMinutes: item.time,
+                    status: "open",
+                    createdAt: Date.now(),
+                    readyAt: null,
+                    servedAt: null
+                });
+            });
+            await Promise.all(promises);
+            alert(`${cart.length} Produkte an die Küche gesendet.`);
+            cart = [];
+            updateUI();
+        };
+
+        window.markAsServed = (orderId) => {
+            update(ref(db, `${ORDERS_PATH}/${orderId}`), {
+                status: "served",
+                servedAt: Date.now()
+            });
+        };
+
+        function updateUI() {
+            // Tische markieren
+            document.querySelectorAll('.btn-table').forEach(btn => btn.classList.remove('active'));
+            if(selectedTable) document.getElementById(`table-btn-${selectedTable}`).classList.add('active');
+            
+            document.getElementById('cart-title').innerText = selectedTable ? `Tisch ${selectedTable}` : "Warenkorb";
+            
+            // Warenkorb rendern
+            const cartCont = document.getElementById('cart-items');
+            cartCont.innerHTML = "";
+            let sum = 0;
+            cart.forEach((item, idx) => {
+                sum += item.price;
+                const div = document.createElement('div');
+                div.className = 'cart-item';
+                div.innerHTML = `<span>${item.name}</span> <button class="btn-remove" onclick="removeFromCart(${idx})">Löschen</button>`;
+                cartCont.appendChild(div);
+            });
+            document.getElementById('cart-sum').innerText = `Summe: ${sum} €`;
+        }
+
+        // Live-Daten für "Lieferbereit"
+        onValue(ref(db, ORDERS_PATH), (snapshot) => {
+            document.getElementById('conn-status').innerText = "Firebase: Verbunden";
+            const data = snapshot.val();
+            const readyCont = document.getElementById('ready-list');
+            readyCont.innerHTML = "";
+            if(data) {
+                Object.entries(data).forEach(([id, order]) => {
+                    if(order.status === "ready") {
+                        const div = document.createElement('div');
+                        div.className = 'ready-item';
+                        const minutesAgo = Math.floor((Date.now() - order.readyAt) / 60000);
+                        div.innerHTML = `<div><strong>Tisch ${order.table}</strong>: ${order.itemName}<br><small>Fertig seit ${minutesAgo} Min.</small></div>
+                                         <button class="btn-serve" onclick="markAsServed('${id}')">Serviert</button>`;
+                        readyCont.appendChild(div);
+                    }
+                });
+            }
+        });
+
+        init();
+    </script>
+</body>
+</html>
