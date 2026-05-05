@@ -2,30 +2,130 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sapore - Küche</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Sapore - Küche Monitor</title>
     <style>
-        :root { --bg: #1c1c1e; --card: #2c2c2e; --text: #ffffff; --primary: #0a84ff; }
-        body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); padding: 20px; }
-        .grid-orders { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
-        .card { background: var(--card); border-radius: 15px; padding: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); border-top: 8px solid #444; }
-        .card.urgent-1 { border-top-color: #32d74b; } /* In Vorbereitung */
-        .card.urgent-2 { border-top-color: #ffd60a; } /* Jetzt fertig machen */
-        .card.urgent-3 { border-top-color: #ff9f0a; } /* Schnell fertig machen */
-        .card.urgent-4 { border-top-color: #ff453a; animation: pulse 2s infinite; } /* Zu lange! */
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
-        
-        .table-num { font-size: 24px; font-weight: bold; margin-bottom: 5px; }
-        .item-name { font-size: 20px; margin-bottom: 10px; color: var(--primary); }
-        .meta { font-size: 14px; color: #aeaeb2; margin-bottom: 15px; }
-        .btn-ready { width: 100%; padding: 15px; background: #32d74b; color: black; border: none; border-radius: 10px; font-weight: bold; font-size: 18px; cursor: pointer; }
-        .status-txt { font-weight: bold; text-transform: uppercase; font-size: 12px; margin-bottom: 10px; display: block; }
+        :root {
+            --bg: #000000;
+            --card: #1c1c1e;
+            --text: #ffffff;
+            --primary: #0a84ff;
+            --success: #32d74b;
+            --warning: #ffd60a;
+            --danger: #ff453a;
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 15px;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: var(--card);
+            border-radius: 15px;
+        }
+
+        .order-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+            gap: 20px;
+        }
+
+        .card {
+            background: var(--card);
+            border-radius: 28px;
+            padding: 25px;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            min-height: 280px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            border: 2px solid #303033;
+        }
+
+        /* Fortschrittsbalken im Hintergrund - füllt sich bis zur Zielzeit */
+        .progress-bg {
+            position: absolute;
+            top: 0; left: 0; bottom: 0;
+            width: 0%; 
+            background: rgba(50, 215, 75, 0.1);
+            z-index: 1;
+            transition: width 1s linear, background 0.5s;
+        }
+
+        .card-content { position: relative; z-index: 2; }
+
+        .urgency-label {
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            font-weight: 800;
+            padding: 6px 12px;
+            border-radius: 8px;
+            display: inline-block;
+            margin-bottom: 15px;
+            background: #303033;
+        }
+
+        .table-num { font-size: 56px; font-weight: 900; margin: 0; }
+        .item-name { font-size: 34px; font-weight: 700; color: var(--text); margin: 10px 0; line-height: 1.1; }
+        .time-info { font-size: 20px; color: #aeaeb2; margin-bottom: 25px; }
+
+        .btn-done {
+            width: 100%;
+            padding: 22px;
+            border: none;
+            border-radius: 18px;
+            font-size: 26px;
+            font-weight: 800;
+            cursor: pointer;
+            background: #ffffff;
+            color: #000;
+        }
+
+        /* STUFE 2: Zielzeit erreicht */
+        .state-warn { border-color: var(--warning); }
+        .state-warn .urgency-label { background: var(--warning); color: #000; }
+        .state-warn .progress-bg { background: rgba(255, 214, 10, 0.2); }
+
+        /* STUFE 3: Deutlich drüber (1.5x) */
+        .state-danger { border-color: var(--danger); }
+        .state-danger .urgency-label { background: var(--danger); color: #fff; }
+        .state-danger .progress-bg { background: rgba(255, 69, 58, 0.3); }
+
+        /* STUFE 4: Viel zu spät (2.0x) */
+        .state-late { 
+            border: 5px solid var(--danger); 
+            animation: pulse-red 1.5s infinite;
+        }
+        .state-late .urgency-label { background: var(--danger); color: #fff; }
+        .state-late .progress-bg { background: rgba(255, 69, 58, 0.5); }
+
+        @keyframes pulse-red {
+            0% { box-shadow: 0 0 0 0 rgba(255, 69, 58, 0.7); }
+            70% { box-shadow: 0 0 0 25px rgba(255, 69, 58, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 69, 58, 0); }
+        }
     </style>
 </head>
 <body>
-    <h1>👨‍🍳 Küche - Sapore</h1>
-    <div id="kitchen-stats" style="margin-bottom: 20px; color: #aeaeb2;">Lade Bestellungen...</div>
-    <div class="grid-orders" id="orders-display"></div>
+
+    <header>
+        <h1 style="margin:0; font-size: 22px;">👨‍🍳 SAPORE KÜCHE</h1>
+        <div id="order-count" style="font-size: 20px; font-weight: bold;">0 Bestellungen</div>
+    </header>
+
+    <div class="order-grid" id="grid"></div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
@@ -45,49 +145,64 @@
         const db = getDatabase(app);
         const ORDERS_PATH = "restaurant/sapore/orders";
 
-        function render() {
-            onValue(ref(db, ORDERS_PATH), (snapshot) => {
-                const data = snapshot.val();
-                const display = document.getElementById('orders-display');
-                display.innerHTML = "";
-                
-                if(!data) {
-                    document.getElementById('kitchen-stats').innerText = "Keine offenen Bestellungen.";
-                    return;
+        onValue(ref(db, ORDERS_PATH), (snapshot) => {
+            const data = snapshot.val();
+            const grid = document.getElementById('grid');
+            grid.innerHTML = "";
+
+            if (!data) {
+                document.getElementById('order-count').innerText = "Küche leer";
+                return;
+            }
+
+            const openOrders = Object.entries(data)
+                .filter(([id, o]) => o.status === "open")
+                .map(([id, o]) => {
+                    const elapsedMin = (Date.now() - o.createdAt) / 60000;
+                    const ratio = elapsedMin / o.targetMinutes;
+                    return { id, ...o, elapsedMin, ratio };
+                });
+
+            openOrders.sort((a, b) => b.ratio - a.ratio);
+            document.getElementById('order-count').innerText = `${openOrders.length} offen`;
+
+            openOrders.forEach(o => {
+                let stateClass = "";
+                let label = "In Vorbereitung"; // Stufe 1
+
+                if (o.ratio >= 2.0) {
+                    stateClass = "state-late";
+                    label = "Gast wartet zu lange!"; // Stufe 4
+                } else if (o.ratio >= 1.5) {
+                    stateClass = "state-danger";
+                    label = "Bitte schnell fertig machen"; // Stufe 3
+                } else if (o.ratio >= 1.0) {
+                    stateClass = "state-warn";
+                    label = "Jetzt fertig machen"; // Stufe 2
                 }
 
-                let orders = Object.entries(data)
-                    .filter(([id, o]) => o.status === "open")
-                    .map(([id, o]) => {
-                        const elapsed = (Date.now() - o.createdAt) / 60000;
-                        const ratio = elapsed / o.targetMinutes;
-                        return { id, ...o, elapsed, ratio };
-                    });
+                const progressWidth = Math.min(o.ratio * 100, 100);
+                const displayMin = Math.floor(o.elapsedMin);
+                const displaySec = Math.floor((o.elapsedMin * 60) % 60);
 
-                // Sortierung: Dringlichkeit (Ratio) absteigend
-                orders.sort((a, b) => b.ratio - a.ratio);
-                document.getElementById('kitchen-stats').innerText = `${orders.length} Bestellungen offen`;
-
-                orders.forEach(o => {
-                    let statusLabel = "In Vorbereitung";
-                    let urgentClass = "urgent-1";
-                    if(o.ratio >= 2.0) { statusLabel = "Gast wartet zu lange!"; urgentClass = "urgent-4"; }
-                    else if(o.ratio >= 1.5) { statusLabel = "Bitte schnell fertig machen"; urgentClass = "urgent-3"; }
-                    else if(o.ratio >= 1.0) { statusLabel = "Jetzt fertig machen"; urgentClass = "urgent-2"; }
-
-                    const card = document.createElement('div');
-                    card.className = `card ${urgentClass}`;
-                    card.innerHTML = `
-                        <span class="status-txt">${statusLabel}</span>
+                const card = document.createElement('div');
+                card.className = `card ${stateClass}`;
+                card.innerHTML = `
+                    <div class="progress-bg" style="width: ${progressWidth}%"></div>
+                    <div class="card-content">
+                        <div class="urgency-label">${label}</div>
                         <div class="table-num">Tisch ${o.table}</div>
                         <div class="item-name">${o.itemName}</div>
-                        <div class="meta">Wartet seit: ${Math.floor(o.elapsed)} Min.<br>Ziel: ${o.targetMinutes} Min.</div>
-                        <button class="btn-ready" onclick="markReady('${o.id}')">FERTIG</button>
-                    `;
-                    display.appendChild(card);
-                });
+                        <div class="time-info">
+                            Wartet seit: <strong>${displayMin}:${displaySec.toString().padStart(2, '0')}</strong><br>
+                            Soll: ${o.targetMinutes} Min.
+                        </div>
+                        <button class="btn-done" onclick="markReady('${o.id}')">FERTIG ✓</button>
+                    </div>
+                `;
+                grid.appendChild(card);
             });
-        }
+        });
 
         window.markReady = (id) => {
             update(ref(db, `${ORDERS_PATH}/${id}`), {
@@ -96,8 +211,8 @@
             });
         };
 
-        setInterval(render, 30000); // Alle 30 Sek neu berechnen für Timer
-        render();
+        // UI-Refresh jede Sekunde für die Timer-Anzeige
+        setInterval(() => {}, 1000); 
     </script>
 </body>
 </html>
